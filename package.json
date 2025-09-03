@@ -1,0 +1,17 @@
+{
+  "name": "jagl",
+  "version": "0.1.0",
+  "description": "A lightweight and fast vanilla JS grid component.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "echo \"No start script configured yet.\"",
+    "build": "echo \"No build script configured yet.\""
+  },
+  "keywords": [
+    "grid",
+    "datagrid",
+    "vanilla-js"
+  ],
+  "author": "",
+  "license": "MIT"
+}

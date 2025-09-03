@@ -1,0 +1,5 @@
+[
+  { "id": 1, "name": "John Doe", "email": "john.doe@example.com", "status": "Active" },
+  { "id": 2, "name": "Jane Smith", "email": "jane.smith@example.com", "status": "Inactive" },
+  { "id": 3, "name": "Peter Jones", "email": "peter.jones@example.com", "status": "Active" }
+]
