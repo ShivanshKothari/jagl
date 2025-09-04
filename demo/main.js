@@ -1,11 +1,17 @@
-import Grid from "../src/index.js";
+// demo/main.js
+import { Grid } from '../src/core/Grid.js';
 
-const gridContainer = document.getElementById("grid-container");
+const gridContainer = document.getElementById('grid-container');
 
-const options = {
-  dataSource: "./data.json",
-  gridConfig: {}
-};
-
-console.log("Initializing grid...");
-const myGrid = new Grid(gridContainer, options);
+// This is how a user will interact with your library!
+const myGrid = new Grid(gridContainer, {
+    dataSource: {
+      mode: 'url',
+      source: './data.json'
+    },
+    sorting: {
+      key: 'sno',
+      order: 'asc'
+    },
+ addSerialColumn: true,
+});
