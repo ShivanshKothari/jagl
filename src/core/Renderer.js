@@ -26,7 +26,7 @@ export class Renderer {
      * @param {Array<Object>} data - The array of data objects to render.
      * @param {Array<Object>} columns - The configuration array for the table's columns.
      */
-    render(data, config) {
+    render(data, config, pagingState) {
         this.container.innerHTML = '';
         
 
@@ -34,6 +34,7 @@ export class Renderer {
         const thead = document.createElement('thead');
         this.tbody = document.createElement('tbody');
         const headerRow = document.createElement('tr');
+        this.table.setAttribute("class", "table table-bordered commonTable table-striped");
 
         if (config.style) {
             Object.assign(this.table.style, config.style);
@@ -72,7 +73,44 @@ export class Renderer {
         this.table.appendChild(thead);
         this.table.appendChild(this.tbody);
         this.container.appendChild(this.table);
+
+        // After rendering the table, render the pager UI
+        if (config.paging && config.paging.enabled) {
+            this.renderPager(pagingState);
+        }
     }
+
+    renderPager(pagingState) {
+        const pagerContainer = document.createElement('div');
+        pagerContainer.className = 'grid-pager';
+
+        // Example: "Page 1 of 10" text
+        const pageInfo = document.createElement('span');
+        pageInfo.textContent = `Page ${pagingState.currentPage} of ${pagingState.totalPages}`;
+        
+        // Example: "Previous" button
+        const prevButton = document.createElement('button');
+        prevButton.textContent = 'Previous';
+        prevButton.dataset.page = pagingState.currentPage - 1;
+        if (pagingState.currentPage === 1) {
+            prevButton.disabled = true;
+        }
+
+        // Example: "Next" button
+        const nextButton = document.createElement('button');
+        nextButton.textContent = 'Next';
+        nextButton.dataset.page = pagingState.currentPage + 1;
+        if (pagingState.currentPage === pagingState.totalPages) {
+            nextButton.disabled = true;
+        }
+
+        pagerContainer.appendChild(prevButton);
+        pagerContainer.appendChild(pageInfo);
+        pagerContainer.appendChild(nextButton);
+
+        this.container.appendChild(pagerContainer);
+    }
+
 
     /**
      * Escapes HTML characters in a string to prevent Cross-Site Scripting (XSS) attacks.

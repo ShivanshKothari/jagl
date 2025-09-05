@@ -20,6 +20,15 @@ export class EventManager {
      */
     attachEvents() {
         this.container.addEventListener('click', (event) => {
+            // --- Pager Click Logic ---
+            const pagerButton = event.target.closest('.grid-pager button');
+            if (pagerButton && !pagerButton.disabled) {
+                const pageNumber = parseInt(pagerButton.dataset.page, 10);
+                this.grid.goToPage(pageNumber);
+                return; // Stop processing
+            }
+
+            // --- Header Click Logic ---
             const headerCell = event.target.closest('th');
             if (!headerCell) return;
 

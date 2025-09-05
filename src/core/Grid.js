@@ -27,12 +27,22 @@ export class Grid {
             columns: [],
             addSerialColumn: false,
             filterData: true,
+            paging: {
+                enabled: true,
+                pageSize: 25 // Default page size
+            },
             style: { overflow: 'scroll' },
             ...options // User options override defaults
         };
         this.sortState = { key: null, order: 'asc', ...options.sorting };
         this.filterState = {};
         this.activeFilterMenu = null;
+        this.pagingState = {
+            currentPage: 1,
+            pageSize: this.options.paging.pageSize,
+            totalRecords: 0,
+            totalPages: 0,
+        };
 
         this.store = new DataStore([], { addSerialColumn: this.options.addSerialColumn });
         this.renderer = new Renderer(this.container);
@@ -76,6 +86,9 @@ export class Grid {
     _setDataAndRender(data) {
         this.store.setData(data);
 
+        // Reset to page 1 whenever new data is set
+        this.pagingState.currentPage = 1;
+
         // If no columns are defined by the user, generate them automatically
         if (this.options.columns.length === 0 && this.store.getData().length > 0) {
             this.options.columns = Object.keys(this.store.getData()[0]).map((key, index) => ({
@@ -117,8 +130,20 @@ export class Grid {
      * It passes the current `viewData` and config object with columns, filterData flag and style to the renderer.
      */
     render() {
+        const fullData = this.store.getData();
+        this.pagingState.totalRecords = fullData.length;
+        this.pagingState.totalPages = Math.ceil(this.pagingState.totalRecords / this.pagingState.pageSize);
+        
+        let dataToRender = fullData;
+
+        if (this.options.paging.enabled) {
+            const start = (this.pagingState.currentPage - 1) * this.pagingState.pageSize;
+            const end = start + this.pagingState.pageSize;
+            dataToRender = fullData.slice(start, end);
+        }
+
         // Pass the configured columns to the renderer
-        this.renderer.render(this.store.getData(), { columns: this.options.columns, filterData: this.options.filterData, style: { ...(this.options.style ? this.options.style : {}) } });
+        this.renderer.render(dataToRender, { columns: this.options.columns, filterData: this.options.filterData, style: { ...(this.options.style ? this.options.style : {})  }, paging: { ...(this.options.paging ? this.options.paging : {})  }}, this.pagingState);
     }
 
     /**
@@ -194,9 +219,20 @@ export class Grid {
             column.hasFilter = Object.hasOwn(this.filterState, column.key) && this.filterState[column.key];
         })
 
+        // Reset to page 1 after filtering
+        this.pagingState.currentPage = 1; 
+
         this.store.filterData(this.filterState);
         // After filtering, you might want to re-sort based on the current sortState
         this.store.sortData(this.sortState.key, this.sortState.order);
+        this.render();
+    }
+
+    goToPage(pageNumber) {
+        if (pageNumber < 1 || pageNumber > this.pagingState.totalPages) {
+            return; // Invalid page number
+        }
+        this.pagingState.currentPage = pageNumber;
         this.render();
     }
 }
