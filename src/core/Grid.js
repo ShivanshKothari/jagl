@@ -29,9 +29,9 @@ export class Grid {
             filterData: true,
             paging: {
                 enabled: true,
-                pageSize: 25 // Default page size
+                pageSize: 10 // Default page size
             },
-            style: { overflow: 'scroll' },
+            style: { overflow: 'scroll', margin: 0 },
             ...options // User options override defaults
         };
         this.sortState = { key: null, order: 'asc', ...options.sorting };

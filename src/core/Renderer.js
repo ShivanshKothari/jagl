@@ -83,6 +83,10 @@ export class Renderer {
     renderPager(pagingState) {
         const pagerContainer = document.createElement('div');
         pagerContainer.className = 'grid-pager';
+        const coords = this.container.getBoundingClientRect();
+        pagerContainer.style.position = 'absolute';
+        pagerContainer.style.left = `${coords.x + 5}px`;
+        pagerContainer.style.top = `${coords.y + coords.height + 5}px`;
 
         // Example: "Page 1 of 10" text
         const pageInfo = document.createElement('span');
