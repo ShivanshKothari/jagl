@@ -29,7 +29,7 @@ export class MultiSelect {
         this.items.forEach(item => {
             const li = document.createElement('li');
             if (this.config.children.style) {
-                Object.assign(list.style, this.config.children.style);
+                Object.assign(li.style, this.config.children.style);
             }
             const label = document.createElement('label');
             const checkbox = document.createElement('input');

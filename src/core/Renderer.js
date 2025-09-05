@@ -28,10 +28,7 @@ export class Renderer {
      */
     render(data, config) {
         this.container.innerHTML = '';
-        if (!data || data.length === 0) {
-            this.container.innerHTML = `<p>No Data Available</p>`;
-            return;
-        }
+        
 
         this.table = document.createElement('table');
         const thead = document.createElement('thead');
@@ -48,7 +45,7 @@ export class Renderer {
             th.textContent = column.title; // Title/caption
             th.dataset.key = column.key;   // Key/fieldname
             if (config.filterData){
-                th.innerHTML += '&nbsp;&nbsp;<i class="fa fa-filter filter-icon" aria-hidden="true"></i>'
+                th.innerHTML += `&nbsp;&nbsp;<i class="fa fa-filter filter-icon" style="${column.hasFilter ? 'color: gray' : ''}" aria-hidden="true"></i>`
             }
             th.style.padding = '5px 10px';
             headerRow.appendChild(th);
@@ -65,6 +62,11 @@ export class Renderer {
             });
             tbodyInnerHTML += `<tr>${trInnerHTML}</tr>`;
         });
+        
+        if (!data || data.length === 0) {
+            tbodyInnerHTML = `<td colspan="${config.columns.length}">No Data Available</td>`;
+            
+        }
 
         this.tbody.innerHTML = tbodyInnerHTML;
         this.table.appendChild(thead);

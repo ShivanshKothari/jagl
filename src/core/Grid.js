@@ -27,7 +27,7 @@ export class Grid {
             columns: [],
             addSerialColumn: false,
             filterData: true,
-            style: {overflow: 'scroll'},
+            style: { overflow: 'scroll' },
             ...options // User options override defaults
         };
         this.sortState = { key: null, order: 'asc', ...options.sorting };
@@ -84,7 +84,7 @@ export class Grid {
                 index: (key === 'sno') ? 0 : index + 1 // If it's 'sno', its index is 0, otherwise normal
             }));
 
-        } 
+        }
 
         this.render();
     }
@@ -118,7 +118,7 @@ export class Grid {
      */
     render() {
         // Pass the configured columns to the renderer
-        this.renderer.render(this.store.getData(), {columns: this.options.columns, filterData: this.options.filterData, style: {...(this.options.style ? this.options.style : {})}});
+        this.renderer.render(this.store.getData(), { columns: this.options.columns, filterData: this.options.filterData, style: { ...(this.options.style ? this.options.style : {}) } });
     }
 
     /**
@@ -146,7 +146,13 @@ export class Grid {
      * @param {HTMLElement} - Anchor element to calculate position.
      */
     handleFilterIconClick(key, anchorElement) {
-        
+
+        if (this.activeFilterMenu && this.activeFilterMenu.key === key) {
+            this.activeFilterMenu.close();
+            this.activeFilterMenu = null;
+            return;
+        }
+        // If another menu is open, close it first
         if (this.activeFilterMenu) {
             this.activeFilterMenu.close();
         }
@@ -163,6 +169,7 @@ export class Grid {
             }
         });
 
+        newMenu.key = key; // Tag the menu with its column key
         this.activeFilterMenu = newMenu;
     }
 
@@ -182,6 +189,10 @@ export class Grid {
         } else {
             delete this.filterState[key];
         }
+
+        this.options.columns.forEach(column => {
+            column.hasFilter = Object.hasOwn(this.filterState, column.key) && this.filterState[column.key];
+        })
 
         this.store.filterData(this.filterState);
         // After filtering, you might want to re-sort based on the current sortState
