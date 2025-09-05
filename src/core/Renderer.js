@@ -1,4 +1,15 @@
+/**
+ * @class
+ * @description Manages the rendering of a data table into a specified DOM element.
+ * It is responsible for creating and updating the table structure, including headers and rows,
+ * and ensuring that data is safely rendered to prevent security vulnerabilities.
+ */
 export class Renderer {
+    /**
+ * Creates a new instance of the Renderer class.
+ * @param {HTMLElement} containerElement - The DOM element where the table will be rendered.
+ * @throws {Error} Throws an error if a container element is not provided.
+ */
     constructor(containerElement) {
         if (!containerElement) {
             throw new Error("Renderer requires a container element.");
@@ -9,9 +20,12 @@ export class Renderer {
     }
 
     /**
-     * Renders the entire grid structure based on the provided data.
-     * @param {Array<Object>} data - The array of data objects to render.
-     */
+ * Renders the entire grid structure based on the provided data and column configuration.
+ * It first clears the container, then builds the table, including the header (`<thead>`)
+ * and the body (`<tbody>`), and appends it to the container.
+ * @param {Array<Object>} data - The array of data objects to render.
+ * @param {Array<Object>} columns - The configuration array for the table's columns.
+ */
     render(data, columns) { 
         this.container.innerHTML = '';
         if (!data || data.length === 0) {
@@ -52,6 +66,13 @@ export class Renderer {
         this.container.appendChild(this.table);
     }
 
+    /**
+ * Escapes HTML characters in a string to prevent Cross-Site Scripting (XSS) attacks.
+ * It replaces characters like `<`, `>`, `&`, `"`, and `'` with their corresponding
+ * HTML entities. If the input is not a string, it is returned as is.
+ * @param {*} text - The text to be escaped.
+ * @returns {string|*} The escaped string or the original value if not a string.
+ */
     escapeHTML(text) {
         if (typeof text !== "string") {
             return text;
