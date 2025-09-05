@@ -6,10 +6,10 @@
  */
 export class Renderer {
     /**
- * Creates a new instance of the Renderer class.
- * @param {HTMLElement} containerElement - The DOM element where the table will be rendered.
- * @throws {Error} Throws an error if a container element is not provided.
- */
+     * Creates a new instance of the Renderer class.
+     * @param {HTMLElement} containerElement - The DOM element where the table will be rendered.
+     * @throws {Error} Throws an error if a container element is not provided.
+     */
     constructor(containerElement) {
         if (!containerElement) {
             throw new Error("Renderer requires a container element.");
@@ -20,13 +20,13 @@ export class Renderer {
     }
 
     /**
- * Renders the entire grid structure based on the provided data and column configuration.
- * It first clears the container, then builds the table, including the header (`<thead>`)
- * and the body (`<tbody>`), and appends it to the container.
- * @param {Array<Object>} data - The array of data objects to render.
- * @param {Array<Object>} columns - The configuration array for the table's columns.
- */
-    render(data, columns) { 
+     * Renders the entire grid structure based on the provided data and column configuration.
+     * It first clears the container, then builds the table, including the header (`<thead>`)
+     * and the body (`<tbody>`), and appends it to the container.
+     * @param {Array<Object>} data - The array of data objects to render.
+     * @param {Array<Object>} columns - The configuration array for the table's columns.
+     */
+    render(data, config) {
         this.container.innerHTML = '';
         if (!data || data.length === 0) {
             this.container.innerHTML = `<p>No Data Available</p>`;
@@ -38,22 +38,28 @@ export class Renderer {
         this.tbody = document.createElement('tbody');
         const headerRow = document.createElement('tr');
 
-        // 1. Generate Headers from the columns config
-        columns.sort((a, b) => a.index - b.index)
-        columns.forEach(column => {
+        if (config.style) {
+            Object.assign(this.table.style, config.style);
+        }
+
+        config.columns.sort((a, b) => a.index - b.index)
+        config.columns.forEach(column => {
             const th = document.createElement('th');
             th.textContent = column.title; // Title/caption
             th.dataset.key = column.key;   // Key/fieldname
+            if (config.filterData){
+                th.innerHTML += '&nbsp;&nbsp;<i class="fa fa-filter filter-icon" aria-hidden="true"></i>'
+            }
+            th.style.padding = '5px 10px';
             headerRow.appendChild(th);
         });
 
         thead.appendChild(headerRow);
 
-        // 2. Generate Rows and Cells based on the columns config
         let tbodyInnerHTML = '';
         data.forEach(rowData => {
             let trInnerHTML = '';
-            columns.forEach(column => {
+            config.columns.forEach(column => {
                 const cellValue = rowData[column.key] ?? ''; // Handle undefined values
                 trInnerHTML += `<td>${this.escapeHTML(cellValue)}</td>`;
             });
@@ -67,12 +73,12 @@ export class Renderer {
     }
 
     /**
- * Escapes HTML characters in a string to prevent Cross-Site Scripting (XSS) attacks.
- * It replaces characters like `<`, `>`, `&`, `"`, and `'` with their corresponding
- * HTML entities. If the input is not a string, it is returned as is.
- * @param {*} text - The text to be escaped.
- * @returns {string|*} The escaped string or the original value if not a string.
- */
+     * Escapes HTML characters in a string to prevent Cross-Site Scripting (XSS) attacks.
+     * It replaces characters like `<`, `>`, `&`, `"`, and `'` with their corresponding
+     * HTML entities. If the input is not a string, it is returned as is.
+     * @param {*} text - The text to be escaped.
+     * @returns {string|*} The escaped string or the original value if not a string.
+     */
     escapeHTML(text) {
         if (typeof text !== "string") {
             return text;

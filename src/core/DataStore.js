@@ -13,7 +13,7 @@ export class DataStore {
         this.options = options;
         this.originalData = []; // The pristine, untouched data
         this.viewData = [];     // The data to be displayed (sorted, filtered, etc.)
-        
+
         this.setData(dataSource);
     }
 
@@ -24,7 +24,7 @@ export class DataStore {
      * @param {Array} dataSource The array of data objects to be stored.
      */
     setData(dataSource) {
-        let dataToStore = [...dataSource]; 
+        let dataToStore = [...dataSource];
 
         // Add sno if not present
         if (this.options.addSerialColumn && dataToStore.length > 0) {
@@ -47,13 +47,23 @@ export class DataStore {
     }
 
     /**
+     * Gets a list of unique values for a given column from the original data.
+     * @param {string} key - The column key to get unique values for.
+     * @returns {Array} An array of unique values.
+     */
+    getUniqueValues(key) {
+        const valueSet = new Set(this.originalData.map(row => row[key]));
+        return [...valueSet].sort();
+    }
+
+    /**
      * Finds and returns a single record from the original source by its ID.
      * @param {string | number} id - The unique identifier of the record.
      * @param {string} idKey - The property name of the ID field (e.g., 'RecordID', 'id'). Defaults to 'id'.
      * @returns {Object | undefined} The full record object or undefined if not found.
      */
     getRecordById(id, idKey = 'id') {
-        // 🔑 Always search the source of truth, not the view.
+        
         return this.originalData.find(record => record[idKey] == id);
     }
 
@@ -67,7 +77,7 @@ export class DataStore {
     sortData(key, order = "asc") {
         const dir = order === "asc" ? 1 : -1;
         const cache = new Map();
-        
+
         const normalize = (val) => {
             if (cache.has(val)) return cache.get(val);
 
@@ -123,5 +133,28 @@ export class DataStore {
         });
     }
 
+    /**
+     * Filters the data and updates the viewData.
+     * @param {Object} filterMap - An object where keys are column names and values are arrays of accepted values.
+     */
+    filterData(filterMap = {}) {
+        const filterKeys = Object.keys(filterMap);
 
+
+        if (filterKeys.length === 0) {
+            this.viewData = [...this.originalData];
+            return;
+        }
+
+
+        this.viewData = this.originalData.filter(row => {
+            // Use `every()` for an efficient "AND" check.
+            // It checks if the row passes the test for ALL filter keys.
+            // It also short-circuits, stopping as soon as a condition fails.
+            return filterKeys.every(key => {
+                // If the row's value for the key is in our list of allowed values, it passes.
+                return filterMap[key].includes(row[key]);
+            });
+        });
+    }
 }

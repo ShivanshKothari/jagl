@@ -1,6 +1,7 @@
 import { DataStore } from './DataStore.js';
 import { Renderer } from './Renderer.js';
 import { EventManager } from './EventManager.js';
+import { FilterMenu } from './FilterMenu.js';
 
 
 /**
@@ -22,13 +23,16 @@ export class Grid {
     constructor(containerElement, options = {}) {
         this.container = containerElement;
 
-        // ✅ Set up default options and merge with user options
         this.options = {
             columns: [],
             addSerialColumn: false,
+            filterData: true,
+            style: {overflow: 'scroll'},
             ...options // User options override defaults
         };
         this.sortState = { key: null, order: 'asc', ...options.sorting };
+        this.filterState = {};
+        this.activeFilterMenu = null;
 
         this.store = new DataStore([], { addSerialColumn: this.options.addSerialColumn });
         this.renderer = new Renderer(this.container);
@@ -80,9 +84,7 @@ export class Grid {
                 index: (key === 'sno') ? 0 : index + 1 // If it's 'sno', its index is 0, otherwise normal
             }));
 
-        } else if (this.options.columns.length < Object.keys(this.store.getData()[0]).length) {
-            console.error("Not all columns defined.")
-        }
+        } 
 
         this.render();
     }
@@ -112,11 +114,11 @@ export class Grid {
 
     /**
      * Triggers the rendering of the grid using the current state of the data store.
-     * It passes the current `viewData` and configured columns to the renderer.
+     * It passes the current `viewData` and config object with columns, filterData flag and style to the renderer.
      */
     render() {
         // Pass the configured columns to the renderer
-        this.renderer.render(this.store.getData(), this.options.columns);
+        this.renderer.render(this.store.getData(), {columns: this.options.columns, filterData: this.options.filterData, style: {...(this.options.style ? this.options.style : {})}});
     }
 
     /**
@@ -137,12 +139,53 @@ export class Grid {
     }
 
     /**
+     * Handles the logic for filtering when the filter icon is clicked.
+     * It updates gets unique values from the column and displays them in the form of multi select menu.
+     * On item click, updates the filter state and triggers a filter operation.
+     * @param {string} key - The data key of the column to filter.
+     * @param {HTMLElement} - Anchor element to calculate position.
+     */
+    handleFilterIconClick(key, anchorElement) {
+        
+        if (this.activeFilterMenu) {
+            this.activeFilterMenu.close();
+        }
+
+        const uniqueValues = this.store.getUniqueValues(key);
+        const currentSelection = this.filterState[key] || [];
+
+        const newMenu = new FilterMenu({
+            values: uniqueValues,
+            selection: currentSelection,
+            anchor: anchorElement,
+            onApply: (newSelection) => {
+                this.applyFilter(key, newSelection);
+            }
+        });
+
+        this.activeFilterMenu = newMenu;
+    }
+
+    /**
      * Sorts the data in the store and re-renders the grid.
      * @param {string} key - The data key to sort by.
      * @param {string} order - The sort order ('asc' or 'desc').
      */
     sort(key, order) {
         this.store.sortData(key, order);
+        this.render();
+    }
+
+    applyFilter(key, selection) {
+        if (selection && selection.length > 0) {
+            this.filterState[key] = selection;
+        } else {
+            delete this.filterState[key];
+        }
+
+        this.store.filterData(this.filterState);
+        // After filtering, you might want to re-sort based on the current sortState
+        this.store.sortData(this.sortState.key, this.sortState.order);
         this.render();
     }
 }

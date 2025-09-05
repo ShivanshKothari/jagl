@@ -10,7 +10,7 @@ export class EventManager {
     constructor(gridInstance) {
         this.grid = gridInstance;
         this.container = gridInstance.container;
-        this.attachHeaderEvents();
+        this.attachEvents();
     }
 
     /**
@@ -18,13 +18,17 @@ export class EventManager {
      * This listener delegates the event to the correct header cell and triggers
      * the sorting logic in the main grid instance.
      */
-    attachHeaderEvents() {
+    attachEvents() {
         this.container.addEventListener('click', (event) => {
             const headerCell = event.target.closest('th');
             if (!headerCell) return;
 
             const key = headerCell.dataset.key;
-            if (key) {
+
+            if (event.target.classList.contains('filter-icon')) {
+                event.stopPropagation();
+                this.grid.handleFilterIconClick(key, event.target);
+            } else {
                 this.grid.handleHeaderClick(key);
             }
         });
