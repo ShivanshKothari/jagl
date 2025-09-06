@@ -20,7 +20,7 @@ const myGrid = new Grid(gridContainer, {
             // ✅ The new render function
             render: (value) => {
                 const color = value === 'Active' ? 'green' : 'red';
-                return `<span style="color: ${color}; font-weight: bold;">${value}</span>`;
+                return `<td><span style="color: ${color}; font-weight: bold;">${value}</span></td>`;
             }
         }
     ],
