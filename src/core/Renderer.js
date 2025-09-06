@@ -1,7 +1,8 @@
 /**
+ * Renderer is a utility class for rendering HTML tables (grids) into a specified container element.
+ * It supports custom column rendering, action columns, and paging UI.
+ *
  * @class
- * @description
- * Handles rendering of the grid/table UI into a specified DOM element. Responsible for building the table structure, headers, rows, and pager UI. Supports custom cell rendering, action columns, and safe HTML escaping. Used internally by the Grid component.
  */
 export class Renderer {
     /**
@@ -102,8 +103,13 @@ export class Renderer {
     }
 
     /**
-     * Renders the pager UI below the table, including page info and navigation buttons.
-     * @param {Object} pagingState - The current paging state (currentPage, totalPages, etc).
+     * Renders a pager UI component below the container element, allowing navigation between pages.
+     *
+     * @param {Object} pagingState - The current paging state.
+     * @param {number} pagingState.currentPage - The current active page number (1-based).
+     * @param {number} pagingState.totalPages - The total number of available pages.
+     *
+     * @returns {void}
      */
     renderPager(pagingState) {
         const pagerContainer = document.createElement('div');

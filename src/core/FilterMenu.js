@@ -1,26 +1,52 @@
-// src/core/FilterMenu.js
 import { MultiSelect } from './ui/MultiSelect.js';
 
+/**
+ * A popup filter menu component that allows users to select multiple items and apply the selection.
+ * 
+ * @class
+ * @example
+ * const menu = new FilterMenu({
+ *   values: ['A', 'B', 'C'],
+ *   selection: ['A'],
+ *   anchor: document.getElementById('filter-btn'),
+ *   onApply: (selected) => { console.log(selected); }
+ * });
+ * 
+ * @param {Object} options - Configuration options for the filter menu.
+ * @param {Array} options.values - The list of selectable items.
+ * @param {Array} options.selection - The initially selected items.
+ * @param {HTMLElement} options.anchor - The DOM element to anchor the menu to.
+ * @param {Function} options.onApply - Callback invoked with the selected items when the user clicks "Apply".
+ */
 export class FilterMenu {
+    
+    /**
+     * Creates a new FilterMenu instance and attaches it to the DOM.
+     * @param {Object} options - Options for the filter menu (values, selection, anchor, onApply).
+     */
     constructor(options) {
         this.onApply = options.onApply;
         this.anchorElement = options.anchor; // For positioning
         
-        // 1. Create the menu element in memory
         this.element = this._createMenuElement(options);
-
-        // 2. ✅ APPEND IT to the live DOM
+        
         document.body.appendChild(this.element);
-
-        // 3. Position it correctly on the screen
+        
         this._positionMenu();
         
-        // 4. Add a listener to close the menu when the user clicks elsewhere
         setTimeout(() => {
             document.addEventListener("click", this.close.bind(this), { once: true });
         }, 0);
     }
 
+    /**
+     * Creates a filter menu DOM element with multi-select options and an apply button.
+     *
+     * @param {Object} options - Configuration options for the menu.
+     * @param {Array} options.values - The list of selectable items for the MultiSelect component.
+     * @param {Array} options.selection - The initially selected items.
+     * @returns {HTMLDivElement} The constructed menu element containing the MultiSelect and apply button.
+     */
     _createMenuElement(options) {
         const menu = document.createElement('div');
         menu.className = 'filter-menu';
@@ -44,6 +70,12 @@ export class FilterMenu {
         return menu;
     }
 
+
+    
+    /**
+     * Positions the filter menu relative to the anchor element.
+     * @private
+     */
     _positionMenu() {
         const rect = this.anchorElement.getBoundingClientRect();
         this.element.style.position = 'absolute';
@@ -55,6 +87,9 @@ export class FilterMenu {
         this.element.style.zIndex = '100';
     }
 
+    /**
+     * Closes and removes the filter menu from the DOM.
+     */
     close() {
         // Check if the element still exists before trying to remove it
         if (this.element) {

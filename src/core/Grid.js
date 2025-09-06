@@ -6,9 +6,47 @@ import { Dropdown } from './ui/Dropdown.js';
 
 
 /**
+ * Represents a dynamic, interactive data grid component.
+ * 
+ * The `Grid` class provides functionality for rendering tabular data with features such as
+ * sorting, filtering, pagination, and customizable columns. It supports data loading from
+ * both remote URLs and local JSON arrays, and allows for extensible configuration.
+ * 
  * @class
- * @description Represents a data grid component that handles data management, rendering, and user interactions like sorting.
- * It acts as the central controller, orchestrating the interactions between the `DataStore`, `Renderer`, and `EventManager`.
+ * 
+ * @example
+ * const grid = new Grid(document.getElementById('gridContainer'), {
+ *   columns: [{ key: 'name', title: 'Name' }, { key: 'age', title: 'Age' }],
+ *   keyField: 'id',
+ *   dataSource: { mode: 'json', source: [{ id: 1, name: 'Alice', age: 30 }] },
+ *   paging: { enabled: true, pageSize: 5 }
+ * });
+ * 
+ * @param {HTMLElement} containerElement - The DOM element where the grid will be rendered.
+ * @param {Object} [config={}] - Configuration options for the grid.
+ * @param {Array<Object>} [config.columns=[]] - Array of column definitions.
+ * @param {boolean} [config.addSerialColumn=false] - Whether to automatically add a serial number column.
+ * @param {boolean} [config.filterData=true] - Whether filtering is enabled.
+ * @param {Object} [config.paging] - Pagination configuration.
+ * @param {boolean} [config.paging.enabled=true] - Whether pagination is enabled.
+ * @param {number} [config.paging.pageSize=10] - Number of records per page.
+ * @param {Object} [config.dataSource] - Data source configuration.
+ * @param {string} [config.dataSource.mode] - Data mode: 'url' or 'json'.
+ * @param {string|Array} [config.dataSource.source] - URL string or JSON data array.
+ * @param {string} [config.keyField] - Unique key field for identifying records.
+ * @param {Object} [config.sorting] - Initial sorting configuration.
+ * @param {Object} [config.style] - Custom style configuration for the grid container.
+ * @param {Object} [config.actionColumn] - Configuration for row action menus.
+ * 
+ * @property {HTMLElement} container - The container element for the grid.
+ * @property {Object} config - The configuration object for the grid.
+ * @property {Object} sortState - The current sorting state.
+ * @property {Object} filterState - The current filter state.
+ * @property {Object} pagingState - The current pagination state.
+ * @property {DataStore} store - The data store instance managing grid data.
+ * @property {Renderer} renderer - The renderer instance responsible for DOM updates.
+ * @property {EventManager} eventManager - The event manager for grid events.
+ * @property {FilterMenu|null} activeFilterMenu - The currently open filter menu, if any.
  */
 export class Grid {
     /**
@@ -203,6 +241,14 @@ export class Grid {
         this.activeFilterMenu = newMenu;
     }
 
+    /**
+     * Handles the click event on the action menu for a grid row.
+     * Retrieves the row data using the provided key field, constructs dropdown items
+     * based on the configured actions, and displays a dropdown menu at the trigger element.
+     *
+     * @param {*} keyField - The unique identifier value for the row.
+     * @param {HTMLElement} triggerElement - The DOM element that triggered the action menu.
+     */
     handleActionMenuClick(keyField, triggerElement) {
     
     const rowData = this.store.getRecordById(keyField, this.config.keyField);
@@ -235,6 +281,14 @@ export class Grid {
         this.render();
     }
 
+    /**
+     * Applies a filter to the grid based on the provided key and selection.
+     * Updates the filter state, marks columns with active filters, resets pagination,
+     * applies the filter and sort to the data store, and re-renders the grid.
+     *
+     * @param {string} key - The key identifying the column to filter.
+     * @param {Array} selection - The selected filter values for the column.
+     */
     applyFilter(key, selection) {
         if (selection && selection.length > 0) {
             this.filterState[key] = selection;
@@ -255,6 +309,12 @@ export class Grid {
         this.render();
     }
 
+    /**
+     * Navigates to the specified page number if it is within the valid range.
+     *
+     * @param {number} pageNumber - The page number to navigate to (1-based index).
+     * @returns {void}
+     */
     goToPage(pageNumber) {
         if (pageNumber < 1 || pageNumber > this.pagingState.totalPages) {
             return; // Invalid page number

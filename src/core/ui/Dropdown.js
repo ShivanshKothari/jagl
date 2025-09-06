@@ -1,5 +1,41 @@
 /**
- * A reusable, multipurpose dropdown component.
+ * Dropdown UI component for displaying a customizable list of selectable items.
+ *
+ * @class
+ * @classdesc
+ * The Dropdown class provides a simple, configurable dropdown menu that can be attached to any trigger element.
+ * It supports custom item rendering, click and hover interactions, and accessibility features.
+ *
+ * @example
+ * const trigger = document.getElementById('dropdown-trigger');
+ * const dropdown = new Dropdown(trigger, {
+ *   items: [
+ *     { label: 'Option 1', onClick: () => alert('Option 1 selected') },
+ *     { label: 'Option 2' }
+ *   ],
+ *   onSelect: (item, index) => console.log('Selected:', item, index),
+ *   config: {
+ *     panel: { background: '#fff' },
+ *     itemHover: { background: '#eee' }
+ *   }
+ * });
+ *
+ * @param {HTMLElement} triggerElement - The element that triggers the dropdown when clicked.
+ * @param {Object} options - Configuration options for the dropdown.
+ * @param {Array<Object>} options.items - Array of item objects to display in the dropdown.
+ * @param {Function} [options.onSelect] - Default callback function when an item is selected.
+ * @param {Object} [options.config] - Custom style configuration for panel, list, item, and itemHover.
+ *
+ * @property {HTMLElement} triggerElement - The trigger element for the dropdown.
+ * @property {Array<Object>} items - The list of items displayed in the dropdown.
+ * @property {Function} [onSelect] - Default callback for item selection.
+ * @property {HTMLElement|null} panel - The dropdown panel element.
+ * @property {boolean} isOpen - Indicates whether the dropdown is open.
+ * @property {Object} config - Merged style configuration for the dropdown.
+ *
+ * @method toggle - Toggles the open/closed state of the dropdown.
+ * @method open - Opens the dropdown panel.
+ * @method close - Closes the dropdown panel.
  */
 export class Dropdown {
     /**
@@ -29,6 +65,17 @@ export class Dropdown {
         this.toggle()
     }
 
+    /**
+     * Creates and renders the dropdown panel with a list of selectable items.
+     * 
+     * - Initializes the panel and list elements with configured styles.
+     * - Iterates over `this.items` to create list items, applying styles and attributes.
+     * - Adds event listeners for hover and click interactions on each item.
+     * - Appends the panel to the document body.
+     * 
+     * @private
+     * @returns {void}
+     */
     _createPanel() {
         this.panel = document.createElement('div');
         this.panel.className = 'dropdown-panel';
@@ -70,6 +117,11 @@ export class Dropdown {
     }
 
 
+    /**
+     * Attaches click event listener to the trigger element for the dropdown.
+     * When the trigger is clicked, it stops the event from propagating and toggles the dropdown.
+     * @private
+     */
     _attachTriggerEvents() {
         this.triggerElement.addEventListener('click', (event) => {
             event.stopPropagation();
@@ -79,6 +131,13 @@ export class Dropdown {
 
     
 
+    /**
+     * Positions the dropdown panel absolutely below the trigger element,
+     * aligning its left edge with the trigger's left edge and adding a small vertical offset.
+     * Takes into account the current scroll position of the window.
+     *
+     * @private
+     */
     _positionPanel() {
         const rect = this.triggerElement.getBoundingClientRect();
         this.panel.style.position = 'absolute';
@@ -86,6 +145,11 @@ export class Dropdown {
         this.panel.style.left = `${rect.left + window.scrollX}px`;
     }
 
+    /**
+     * Toggles the open or closed state of the dropdown.
+     * If the dropdown is currently open, it will be closed.
+     * If it is closed, it will be opened.
+     */
     toggle() {
         if (this.isOpen) {
             this.close();
@@ -94,6 +158,14 @@ export class Dropdown {
         }
     }
 
+    /**
+     * Opens the dropdown panel.
+     * - Sets the dropdown state to open.
+     * - Updates the trigger element's ARIA attribute for accessibility.
+     * - Creates the dropdown panel if it doesn't exist.
+     * - Positions and displays the panel.
+     * - Adds a one-time event listener to close the dropdown when clicking outside.
+     */
     open() {
         if (this.isOpen) return;
         this.isOpen = true;
@@ -112,6 +184,11 @@ export class Dropdown {
         }, 0);
     }
 
+    /**
+     * Closes the dropdown panel if it is currently open.
+     * Sets the `isOpen` property to false, updates the `aria-expanded` attribute
+     * for accessibility, and hides the dropdown panel if it exists.
+     */
     close() {
         if (!this.isOpen) return;
         this.isOpen = false;
