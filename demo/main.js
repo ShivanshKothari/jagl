@@ -31,9 +31,9 @@ const myGrid = new Grid(gridContainer, {
             {
                 label: 'Edit',
                 className: 'btn-edit',
-                onClick: (keyField) => {
+                onClick: (keyFieldValue,keyField, dataStore) => {
                     // Find the record *when the click occurs*
-                    const rowData = this.store.getRecordById(keyField, this.config.keyField);
+                    const rowData = dataStore.getRecordById(keyFieldValue, keyField);
                     // Now execute the original action with the correct row data
                     console.log('Edit action clicked for:', rowData);
                 }
@@ -41,12 +41,11 @@ const myGrid = new Grid(gridContainer, {
             {
                 label: 'Delete',
                 className: 'btn-delete',
-                onClick: (keyField) => {
+                onClick: (keyFieldValue,keyField, dataStore) => {
                     // Find the record *when the click occurs*
-                    const rowData = this.store.getRecordById(keyField, this.config.keyField);
+                    const rowData = dataStore.getRecordById(keyFieldValue, keyField);
                     // Now execute the original action with the correct row data
-                    action.onClick(rowData);
-                    console.log('Delete action clicked for:', rowData);
+                    console.log('Edit action clicked for:', rowData);
                 }
             }
         ]

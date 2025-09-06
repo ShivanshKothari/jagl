@@ -26,6 +26,7 @@ export class Dropdown {
         this.config = { ...defaultConfig, ...options.config };
 
         this._attachTriggerEvents();
+        this.toggle()
     }
 
     _createPanel() {

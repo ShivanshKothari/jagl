@@ -209,10 +209,11 @@ export class Grid {
     if (!rowData) return;
 
     const dropdownItems = this.config.actionColumn.actions.map(action => {
+        const keyField = this.store.getKeyFieldValue(this.config.actionColumn.keyField, rowData);
         return {
             label: action.label,
-            attrs: {key: this.store.getKeyFieldValue(this.config.actionColumn.keyField, rowData), ...action.attrs},
-            onClick: () => action.onClick(this.config.actionColumn.keyField) 
+            attrs: {key: keyField, ...action.attrs},
+            onClick: () => action.onClick(keyField,this.config.actionColumn.keyField, this.store) 
         };
     });
 
