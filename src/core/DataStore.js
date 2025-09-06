@@ -7,10 +7,10 @@ export class DataStore {
     /**
      * Creates a new instance of the DataStore class.
      * @param {Array} [dataSource=[]] - The initial array of data to be stored. Defaults to an empty array.
-     * @param {Object} [options={}] - Configuration options for the DataStore.
+     * @param {Object} [config={}] - Configuration config for the DataStore.
      */
-    constructor(dataSource = [], options = {}) {
-        this.options = options;
+    constructor(dataSource = [], config = {}) {
+        this.config = config;
         this.originalData = []; // The pristine, untouched data
         this.viewData = [];     // The data to be displayed (sorted, filtered, etc.)
 
@@ -27,7 +27,7 @@ export class DataStore {
         let dataToStore = [...dataSource];
 
         // Add sno if not present
-        if (this.options.addSerialColumn && dataToStore.length > 0) {
+        if (this.config.addSerialColumn && dataToStore.length > 0) {
             dataToStore.forEach((element, index) => {
                 element['sno'] = index + 1;
             });
@@ -64,7 +64,11 @@ export class DataStore {
      */
     getRecordById(id, idKey = 'id') {
         
-        return this.originalData.find(record => record[idKey] == id);
+        return this.originalData.find(record => {return idKey.split(',').every((key) => record[key] == id);});
+    }
+
+    getKeyFieldValue(keyField, row) {
+        return keyField.split(',').map(key => row[key]).join(',');
     }
 
     /**

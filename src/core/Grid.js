@@ -2,6 +2,7 @@ import { DataStore } from './DataStore.js';
 import { Renderer } from './Renderer.js';
 import { EventManager } from './EventManager.js';
 import { FilterMenu } from './FilterMenu.js';
+import { Dropdown } from './ui/Dropdown.js';
 
 
 /**
@@ -13,17 +14,17 @@ export class Grid {
     /**
      * Creates an instance of the Grid.
      * @param {HTMLElement} containerElement - The DOM element where the grid will be rendered.
-     * @param {Object} [options={}] - The configuration options for the grid.
-     * @param {Array<Object>} [options.columns=[]] - An array of column definitions to control rendering.
-     * @param {boolean} [options.addSerialColumn=false] - A flag to automatically add a serial number column.
-     * @param {Object} [options.dataSource] - The data source configuration.
-     * @param {string} [options.dataSource.mode] - The data mode, either 'url' or 'json'.
-     * @param {string|Array} [options.dataSource.source] - The URL string or the JSON data array.
+     * @param {Object} [config={}] - The configuration config for the grid.
+     * @param {Array<Object>} [config.columns=[]] - An array of column definitions to control rendering.
+     * @param {boolean} [config.addSerialColumn=false] - A flag to automatically add a serial number column.
+     * @param {Object} [config.dataSource] - The data source configuration.
+     * @param {string} [config.dataSource.mode] - The data mode, either 'url' or 'json'.
+     * @param {string|Array} [config.dataSource.source] - The URL string or the JSON data array.
      */
-    constructor(containerElement, options = {}) {
+    constructor(containerElement, config = {}) {
         this.container = containerElement;
 
-        this.options = {
+        this.config = {
             columns: [],
             addSerialColumn: false,
             filterData: true,
@@ -32,19 +33,23 @@ export class Grid {
                 pageSize: 10 // Default page size
             },
             style: { overflow: 'scroll', margin: 0 },
-            ...options // User options override defaults
+            ...config // User config override defaults
         };
-        this.sortState = { key: null, order: 'asc', ...options.sorting };
+
+        if (!this.config.keyField) {
+            console.error("Grid requires a unique 'keyField' in the configuration for identifying records.");
+        }
+        this.sortState = { key: null, order: 'asc', ...config.sorting };
         this.filterState = {};
         this.activeFilterMenu = null;
         this.pagingState = {
             currentPage: 1,
-            pageSize: this.options.paging.pageSize,
+            pageSize: this.config.paging.pageSize,
             totalRecords: 0,
             totalPages: 0,
         };
 
-        this.store = new DataStore([], { addSerialColumn: this.options.addSerialColumn });
+        this.store = new DataStore([], { addSerialColumn: this.config.addSerialColumn });
         this.renderer = new Renderer(this.container);
         this.eventManager = new EventManager(this);
 
@@ -60,13 +65,13 @@ export class Grid {
     async init() {
 
         // GUARD CLAUSE: Do nothing if no data source is provided.
-        if (!this.options.dataSource) {
+        if (!this.config.dataSource) {
             this.render(); // Render an empty state
             return;
         }
 
-        const mode = this.options.dataSource.mode?.toLowerCase();
-        const source = this.options.dataSource.source;
+        const mode = this.config.dataSource.mode?.toLowerCase();
+        const source = this.config.dataSource.source;
 
         if (mode === 'url') {
             await this.loadFromURL(source);
@@ -90,8 +95,8 @@ export class Grid {
         this.pagingState.currentPage = 1;
 
         // If no columns are defined by the user, generate them automatically
-        if (this.options.columns.length === 0 && this.store.getData().length > 0) {
-            this.options.columns = Object.keys(this.store.getData()[0]).map((key, index) => ({
+        if (this.config.columns.length === 0 && this.store.getData().length > 0) {
+            this.config.columns = Object.keys(this.store.getData()[0]).map((key, index) => ({
                 key: key,
                 title: key,
                 index: (key === 'sno') ? 0 : index + 1 // If it's 'sno', its index is 0, otherwise normal
@@ -136,14 +141,14 @@ export class Grid {
         
         let dataToRender = fullData;
 
-        if (this.options.paging.enabled) {
+        if (this.config.paging.enabled) {
             const start = (this.pagingState.currentPage - 1) * this.pagingState.pageSize;
             const end = start + this.pagingState.pageSize;
             dataToRender = fullData.slice(start, end);
         }
 
         // Pass the configured columns to the renderer
-        this.renderer.render(dataToRender, { columns: this.options.columns, filterData: this.options.filterData, style: { ...(this.options.style ? this.options.style : {})  }, paging: { ...(this.options.paging ? this.options.paging : {})  }}, this.pagingState);
+        this.renderer.render(dataToRender, { ...this.config}, this.pagingState);
     }
 
     /**
@@ -198,6 +203,27 @@ export class Grid {
         this.activeFilterMenu = newMenu;
     }
 
+    handleActionMenuClick(keyField, triggerElement) {
+    
+    const rowData = this.store.getRecordById(keyField, this.config.keyField);
+    if (!rowData) return;
+
+    const dropdownItems = this.config.actionColumn.actions.map(action => {
+        return {
+            label: action.label,
+            attrs: {key: this.store.getKeyFieldValue(this.config.actionColumn.keyField, rowData), ...action.attrs},
+            onClick: () => action.onClick(this.config.actionColumn.keyField) 
+        };
+    });
+
+
+    new Dropdown(triggerElement, {
+        items: dropdownItems,
+        // You can also pass a custom style config here if you want
+        // config: { panel: { background: 'lightblue' } } 
+    });
+}
+
     /**
      * Sorts the data in the store and re-renders the grid.
      * @param {string} key - The data key to sort by.
@@ -215,7 +241,7 @@ export class Grid {
             delete this.filterState[key];
         }
 
-        this.options.columns.forEach(column => {
+        this.config.columns.forEach(column => {
             column.hasFilter = Object.hasOwn(this.filterState, column.key) && this.filterState[column.key];
         })
 

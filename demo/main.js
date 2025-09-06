@@ -6,99 +6,54 @@ const gridContainer = document.getElementById('grid-container');
 // This is how a user will interact with the library!
 const myGrid = new Grid(gridContainer, {
     dataSource: {
-      mode: 'url',
-      source: './data2.json'
+        mode: 'url',
+        source: './data.json'
     },
+    keyField: 'id',
     columns: [
-    {
-        "key": "sno",
-        "title": "sno"
+        { key: 'sno', title: 'S.No', index: 0 },
+        { key: 'name', title: 'Employee Name', index: 1 },
+        {
+            key: 'status',
+            title: 'Status',
+            index: 2,
+            // ✅ The new render function
+            render: (value) => {
+                const color = value === 'Active' ? 'green' : 'red';
+                return `<span style="color: ${color}; font-weight: bold;">${value}</span>`;
+            }
+        }
+    ],
+    actionColumn: {
+        title: 'Action',
+        keyField: 'id',
+        actions: [
+            {
+                label: 'Edit',
+                className: 'btn-edit',
+                onClick: (keyField) => {
+                    // Find the record *when the click occurs*
+                    const rowData = this.store.getRecordById(keyField, this.config.keyField);
+                    // Now execute the original action with the correct row data
+                    console.log('Edit action clicked for:', rowData);
+                }
+            },
+            {
+                label: 'Delete',
+                className: 'btn-delete',
+                onClick: (keyField) => {
+                    // Find the record *when the click occurs*
+                    const rowData = this.store.getRecordById(keyField, this.config.keyField);
+                    // Now execute the original action with the correct row data
+                    action.onClick(rowData);
+                    console.log('Delete action clicked for:', rowData);
+                }
+            }
+        ]
     },
-    {
-        "key": "SNo",
-        "title": "SNo"
-    },
-    {
-        "key": "VesselName",
-        "title": "VesselName"
-    },
-    {
-        "key": "EventDate",
-        "title": "EventDate"
-    },
-    {
-        "key": "VesselID",
-        "title": "VesselID"
-    },
-    {
-        "key": "VoyageID",
-        "title": "VoyageID"
-    },
-    {
-        "key": "RecordID",
-        "title": "RecordID"
-    },
-    {
-        "key": "EventName",
-        "title": "EventName"
-    },
-    {
-        "key": "IFOPort",
-        "title": "IFOPort"
-    },
-    {
-        "key": "VLSFOPort",
-        "title": "VLSFOPort"
-    },
-    {
-        "key": "ULSMGOPort",
-        "title": "ULSMGOPort"
-    },
-    {
-        "key": "IFO_Cons",
-        "title": "IFO_Cons"
-    },
-    {
-        "key": "VLSFO_Cons",
-        "title": "VLSFO_Cons"
-    },
-    {
-        "key": "ULSFO_Cons",
-        "title": "ULSFO_Cons"
-    },
-    {
-        "key": "MDO_Cons",
-        "title": "MDO_Cons"
-    },
-    {
-        "key": "ULSMGO_Cons",
-        "title": "ULSMGO_Cons"
-    },
-    {
-        "key": "VLSMGO_Cons",
-        "title": "VLSMGO_Cons"
-    },
-    {
-        "key": "MEOH_Cons",
-        "title": "MEOH_Cons"
-    },
-    {
-        "key": "LNG_Cons",
-        "title": "LNG_Cons"
-    },
-    
-    {
-        "key": "CargoLoaded",
-        "title": "CargoLoaded"
-    },
-    {
-        "key": "CargoDischarged",
-        "title": "CargoDischarged"
-    }
-],
     sorting: {
-      key: 'sno',
-      order: 'asc'
+        key: 'sno',
+        order: 'asc'
     },
- addSerialColumn: true,
+    addSerialColumn: true,
 });

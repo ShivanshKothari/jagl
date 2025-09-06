@@ -28,7 +28,7 @@ export class Renderer {
      */
     render(data, config, pagingState) {
         this.container.innerHTML = '';
-        
+
 
         this.table = document.createElement('table');
         const thead = document.createElement('thead');
@@ -39,15 +39,19 @@ export class Renderer {
         if (config.style) {
             Object.assign(this.table.style, config.style);
         }
+        // Add action column header if actionColumn config is provided
+        if (config.actionColumn) {
+        const th = document.createElement('th');
+        th.textContent = config.actionColumn.title || 'Actions';
+        headerRow.appendChild(th);
+    }
 
-        config.columns.sort((a, b) => a.index - b.index)
-        config.columns.forEach(column => {
+        const finalColumns = config.columns.sort((a, b) => a.index - b.index)
+        finalColumns.forEach(column => {
             const th = document.createElement('th');
             th.textContent = column.title; // Title/caption
             th.dataset.key = column.key;   // Key/fieldname
-            if (config.filterData){
-                th.innerHTML += `&nbsp;&nbsp;<i class="fa fa-filter filter-icon" style="${column.hasFilter ? 'color: gray' : ''}" aria-hidden="true"></i>`
-            }
+
             th.style.padding = '5px 10px';
             headerRow.appendChild(th);
         });
@@ -56,17 +60,35 @@ export class Renderer {
 
         let tbodyInnerHTML = '';
         data.forEach(rowData => {
-            let trInnerHTML = '';
-            config.columns.forEach(column => {
-                const cellValue = rowData[column.key] ?? ''; // Handle undefined values
-                trInnerHTML += `<td>${this.escapeHTML(cellValue)}</td>`;
+            let keyField = '';
+            config.keyField.split(',').forEach(key => keyField += rowData[key]);
+
+            let trInnerHTML = `<tr key="${keyField}">`; // Add a data-id to the row
+
+            if (config.actionColumn) {
+                // You can customize this button with an icon, e.g., '...'
+                trInnerHTML += `<td><button class="action-trigger" style="background-color:none; border: none"><i class="fa fa-bars"></i></button></td>`;
+            }
+            // Render normal cells
+            finalColumns.forEach(column => {
+                const cellValue = rowData[column.key] ?? '';
+
+                // --- THIS IS THE KEY CHANGE ---
+                // If a custom render function exists, use it. Otherwise, use the default.
+                const cellContent = column.render
+                    ? column.render(cellValue, rowData)
+                    : this.escapeHTML(cellValue);
+                trInnerHTML += `<td>${cellContent}</td>`;
             });
-            tbodyInnerHTML += `<tr>${trInnerHTML}</tr>`;
+
+            trInnerHTML += `</tr>`;
+            tbodyInnerHTML += trInnerHTML;
+
         });
-        
+
         if (!data || data.length === 0) {
-            tbodyInnerHTML = `<td colspan="${config.columns.length}">No Data Available</td>`;
-            
+            tbodyInnerHTML = `<td colspan="${finalColumns.length}">No Data Available</td>`;
+
         }
 
         this.tbody.innerHTML = tbodyInnerHTML;
@@ -91,7 +113,7 @@ export class Renderer {
         // Example: "Page 1 of 10" text
         const pageInfo = document.createElement('span');
         pageInfo.textContent = `Page ${pagingState.currentPage} of ${pagingState.totalPages}`;
-        
+
         // Example: "Previous" button
         const prevButton = document.createElement('button');
         prevButton.textContent = 'Previous';

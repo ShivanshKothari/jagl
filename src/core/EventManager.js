@@ -20,6 +20,18 @@ export class EventManager {
      */
     attachEvents() {
         this.container.addEventListener('click', (event) => {
+            
+            // --- Action Menu Trigger Click Logic ---
+            const actionTrigger = event.target.closest('.action-trigger');
+            if (actionTrigger) {
+                const rowElement = actionTrigger.closest('tr');
+                const keyField = rowElement.getAttribute('key');
+
+                // Tell the grid to handle the menu creation
+                this.grid.handleActionMenuClick(keyField, actionTrigger);
+                return;
+            }
+
             // --- Pager Click Logic ---
             const pagerButton = event.target.closest('.grid-pager button');
             if (pagerButton && !pagerButton.disabled) {
