@@ -32,20 +32,20 @@ const myGrid = new Grid(gridContainer, {
             {
                 label: 'Edit',
                 className: 'btn-edit',
-                onClick: (keyFieldValue,keyField, dataStore) => {
+                onClick: (rowData) => {
                     // Find the record *when the click occurs*
-                    const rowData = dataStore.getRecordById(keyFieldValue, keyField);
-                    // Now execute the original action with the correct row data
+                    // const rowData = dataStore.getRecordById(keyFieldValue, keyField);
+                    // // Now execute the original action with the correct row data
                     console.log('Edit action clicked for:', rowData);
                 }
             },
             {
                 label: 'Delete',
                 className: 'btn-delete',
-                onClick: (keyFieldValue,keyField, dataStore) => {
+                onClick: (rowData) => {
                     // Find the record *when the click occurs*
-                    const rowData = dataStore.getRecordById(keyFieldValue, keyField);
-                    // Now execute the original action with the correct row data
+                    // const rowData = dataStore.getRecordById(keyFieldValue, keyField);
+                    // // Now execute the original action with the correct row data
                     console.log('Edit action clicked for:', rowData);
                 }
             }

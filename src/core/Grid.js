@@ -255,7 +255,7 @@ export class Grid {
         return {
             label: action.label,
             attrs: {key: keyField, ...action.attrs},
-            onClick: () => action.onClick(keyField,this.config.actionColumn.keyField, this.store) 
+            onClick: () => action.onClick(rowData, this.store) 
         };
     });
 
