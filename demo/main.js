@@ -12,7 +12,7 @@ const myGrid = new Grid(gridContainer, {
     keyField: 'id',
     columns: [
         { key: 'sno', title: 'S.No', index: 0 },
-        { key: 'name', title: 'Employee Name', index: 1 },
+        {key: 'employeenamestatus', title: 'Employee Name & Status', index: 1, children: [{ key: 'name', title: 'Employee Name', index: 1 },
         {
             key: 'status',
             title: 'Status',
@@ -22,7 +22,8 @@ const myGrid = new Grid(gridContainer, {
                 const color = value === 'Active' ? 'green' : 'red';
                 return `<td><span style="color: ${color}; font-weight: bold;">${value}</span></td>`;
             }
-        }
+        }]}
+        
     ],
     actionColumn: {
         title: 'Action',

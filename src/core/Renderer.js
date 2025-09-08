@@ -29,65 +29,76 @@ export class Renderer {
     render(data, config, pagingState) {
         this.container.innerHTML = '';
 
+    const { headerRows, leafColumns } = this._calculateHeaderStructure(config.columns);
 
-        this.table = document.createElement('table');
-        const thead = document.createElement('thead');
-        this.tbody = document.createElement('tbody');
-        const headerRow = document.createElement('tr');
-        this.table.setAttribute("class", "table table-bordered commonTable table-striped");
+    this.table = document.createElement('table');
+    const thead = document.createElement('thead');
+    this.tbody = document.createElement('tbody');
+    // ⛔️ REMOVED: No longer creating a separate headerRow here
+    // const headerRow = document.createElement('tr'); 
+    this.table.setAttribute("class", "table table-bordered commonTable table-striped");
 
-        if (config.style) {
-            Object.assign(this.table.style, config.style);
-        }
-        // Add action column header if actionColumn config is provided
-        if (config.actionColumn) {
-        const th = document.createElement('th');
-        th.textContent = config.actionColumn.title || 'Actions';
-        headerRow.appendChild(th);
+    if (config.style) {
+        Object.assign(this.table.style, config.style);
     }
+    
+    // ⛔️ REMOVED: Logic to add action column to a separate row is gone from here
 
-        const finalColumns = config.columns.sort((a, b) => a.index - b.index)
-        finalColumns.forEach(column => {
+    // This loop now builds the entire header structure first
+    headerRows.forEach(row => {
+        const tr = document.createElement('tr');
+        row.forEach(header => {
             const th = document.createElement('th');
-            th.textContent = column.title; // Title/caption
-            th.dataset.key = column.key;   // Key/fieldname
-
-            if (config.filterData){
-                th.innerHTML += `&nbsp;&nbsp;<i class="fa fa-filter filter-icon" style="${column.hasFilter ? 'color: gray' : ''}" aria-hidden="true"></i>`
+            th.textContent = header.title;
+            th.dataset.key = header.key;
+            if (header.colspan > 1) th.colSpan = header.colspan;
+            if (header.rowspan > 1) th.rowSpan = header.rowspan;
+            if (config.filterData && header.colspan === 1) {
+                th.innerHTML += `&nbsp;&nbsp;<i class="fa fa-filter filter-icon" style="${header.hasFilter ? 'color: gray' : ''}" aria-hidden="true"></i>`
             }
-            
-            th.style.padding = '5px 10px';
-            headerRow.appendChild(th);
+            tr.appendChild(th);
         });
+        thead.appendChild(tr);
+    });
 
-        thead.appendChild(headerRow);
+    // ✅ NEW: Now that the header rows are built, add the Action column header
+    if (config.actionColumn) {
+        const actionTh = document.createElement('th');
+        actionTh.textContent = config.actionColumn.title || 'Actions';
+        // Make it span all header rows
+        actionTh.rowSpan = headerRows.length; 
+
+        // Find the first header row and add it
+        const firstHeaderRow = thead.querySelector('tr');
+        if (firstHeaderRow) {
+            // Prepend to make it the first column, or use appendChild to make it the last
+            firstHeaderRow.prepend(actionTh); 
+        }
+    }
 
         let tbodyInnerHTML = '';
         data.forEach(rowData => {
             let keyField = '';
             config.keyField.split(',').forEach(key => keyField += rowData[key]);
 
-            let trInnerHTML = `<tr key="${keyField}">`; // Add a data-id to the row
+            let trInnerHTML = `<tr key="${keyField}">`; // Add key to the row
 
             if (config.actionColumn) {
-                // You can customize this button with an icon, e.g., '...'
+                // Action menu button
                 trInnerHTML += `<td><button class="action-trigger" style="background-color:none; border: none"><i class="fa fa-bars"></i></button></td>`;
             }
-            // Render normal cells
-            finalColumns.forEach(column => {
-                const cellValue = rowData[column.key] ?? '';
 
-                // --- THIS IS THE KEY CHANGE ---
-                // If a custom render function exists, use it. Otherwise, use the default.
+            // Use the flat list of leafColumns to ensure correct order and cell count
+            leafColumns.forEach(column => {
+                const cellValue = rowData[column.key] ?? '';
                 const cellHTML = column.render
                     ? column.render(cellValue, rowData)
                     : `<td>${this.escapeHTML(cellValue)}</td>`;
                 trInnerHTML += cellHTML;
             });
-
+            
             trInnerHTML += `</tr>`;
             tbodyInnerHTML += trInnerHTML;
-
         });
 
         if (!data || data.length === 0) {
@@ -148,6 +159,60 @@ export class Renderer {
         pagerContainer.appendChild(nextButton);
 
         this.container.appendChild(pagerContainer);
+    }
+
+    /**
+     * Parses the nested column config and calculates rowspan and colspan for the header.
+     * @param {Array<Object>} columns The user-defined columns array.
+     * @returns {Array<Array<Object>>} An array of rows, where each row is an array of header objects.
+     */
+    _calculateHeaderStructure(columns) {
+        const headerRows = [];
+        const leafColumns = []; // To store the final, flat list of columns for the body
+
+        function traverse(column, level) {
+            if (!headerRows[level]) {
+                headerRows[level] = [];
+            }
+
+            const header = {
+                ...column
+            };
+
+            header.colspan = 1;
+            header.rowspan = 1;
+            
+            headerRows[level].push(header);
+
+            if (column.children && column.children.length > 0) {
+                header.colspan = 0; // Colspan will be the sum of children's spans
+                column.children.forEach(child => {
+                    traverse(child, level + 1);
+                    // The parent's colspan is the sum of its direct children's colspans
+                    const childHeader = headerRows[level + 1].find(h => h.key === child.key);
+                    header.colspan += childHeader ? childHeader.colspan : 1;
+                });
+            } else {
+                // This is a "leaf" column, it will have a data cell in the body
+                leafColumns.push(column);
+            }
+        }
+
+        columns.sort((a, b) => a.index - b.index).forEach(col => traverse(col, 0));
+
+        // Adjust rowspans for cells that don't have children
+        const maxDepth = headerRows.length;
+        headerRows.forEach(row => {
+            row.forEach(header => {
+                // If a header has no children, it should span all the way down
+                const hasChildren = columns.find(c => c.key === header.key)?.children?.length > 0;
+                if (!hasChildren) {
+                    header.rowspan = maxDepth - headerRows.indexOf(row);
+                }
+            });
+        });
+
+        return { headerRows, leafColumns };
     }
 
 
