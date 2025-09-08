@@ -215,15 +215,11 @@ export class Grid {
      */
     handleFilterIconClick(key, anchorElement) {
 
-        if (this.activeFilterMenu && this.activeFilterMenu.key === key) {
-            this.activeFilterMenu.close();
-            this.activeFilterMenu = null;
-            return;
-        }
-        // If another menu is open, close it first
         if (this.activeFilterMenu) {
             this.activeFilterMenu.close();
+            this.activeFilterMenu = null;
         }
+        
 
         const uniqueValues = this.store.getUniqueValues(key);
         const currentSelection = this.filterState[key] || [];

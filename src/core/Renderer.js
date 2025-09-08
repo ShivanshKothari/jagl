@@ -52,6 +52,10 @@ export class Renderer {
             th.textContent = column.title; // Title/caption
             th.dataset.key = column.key;   // Key/fieldname
 
+            if (config.filterData){
+                th.innerHTML += `&nbsp;&nbsp;<i class="fa fa-filter filter-icon" style="${column.hasFilter ? 'color: gray' : ''}" aria-hidden="true"></i>`
+            }
+            
             th.style.padding = '5px 10px';
             headerRow.appendChild(th);
         });
