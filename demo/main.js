@@ -36,7 +36,10 @@ const myGrid = new Grid(gridContainer, {
                     // Find the record *when the click occurs*
                     // const rowData = dataStore.getRecordById(keyFieldValue, keyField);
                     // // Now execute the original action with the correct row data
+                    console.log(myGrid.config)
+                    console.log(myGrid.store)
                     console.log('Edit action clicked for:', rowData);
+                    myGrid.init()
                 }
             },
             {
@@ -47,6 +50,7 @@ const myGrid = new Grid(gridContainer, {
                     // const rowData = dataStore.getRecordById(keyFieldValue, keyField);
                     // // Now execute the original action with the correct row data
                     console.log('Edit action clicked for:', rowData);
+                    myGrid.init()
                 }
             }
         ]

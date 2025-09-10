@@ -107,7 +107,8 @@ export class Grid {
             this.render(); // Render an empty state
             return;
         }
-
+        
+        // Determine the mode and load data accordingly
         const mode = this.config.dataSource.mode?.toLowerCase();
         const source = this.config.dataSource.source;
 
@@ -255,7 +256,7 @@ export class Grid {
         return {
             label: action.label,
             attrs: {key: keyField, ...action.attrs},
-            onClick: () => action.onClick(rowData, this.store) 
+            onClick: () => action.onClick(rowData) 
         };
     });
 
