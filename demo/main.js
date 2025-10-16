@@ -7,7 +7,7 @@ const gridContainer = document.getElementById('grid-container');
 const myGrid = new Grid(gridContainer, {
     dataSource: {
         mode: 'url',
-        source: './data.json'
+        source: './data2.json'
     },
     keyField: 'id',
     columns: [
@@ -33,13 +33,7 @@ const myGrid = new Grid(gridContainer, {
                 label: 'Edit',
                 className: 'btn-edit',
                 onClick: (rowData) => {
-                    // Find the record *when the click occurs*
-                    // const rowData = dataStore.getRecordById(keyFieldValue, keyField);
-                    // // Now execute the original action with the correct row data
-                    console.log(myGrid.config)
-                    console.log(myGrid.store)
-                    console.log('Edit action clicked for:', rowData);
-                    myGrid.init()
+                    myGrid.startEdit(rowData);
                 }
             },
             {
@@ -60,4 +54,28 @@ const myGrid = new Grid(gridContainer, {
         order: 'asc'
     },
     addSerialColumn: true,
+    editForm: {
+        HTML: `<label for="name">Name:</label>
+        <input type="text" id="name" name="name" required>
+        <br><br>
+        <label for="status">Status:</label>
+        <select id="status" name="status" required>
+          <option value="Active">Active</option>
+          <option value="Inactive">Inactive</option>
+          </select>
+        <br><br>
+        <button type="submit">Save</button>
+        <button type="button" id="cancel-btn" onclick="myGrid.endEdit()">Cancel</button>`,
+        mode: 'inline' // 'inline' | 'popup'
+    },
+    paging: {
+                enabled: false
+            }
+});
+
+
+const exportButton = document.getElementById('export-btn');
+exportButton.addEventListener('click', () => {
+    // Call the new public method on your grid instance
+    myGrid.exportToExcel('VesselReport.xls');
 });
