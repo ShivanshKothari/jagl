@@ -161,6 +161,24 @@ export class Renderer {
         this.container.appendChild(pagerContainer);
     }
 
+    showEditForm(rowData, editFormConfig) {
+        // For simplicity, we'll implement only the 'inline' mode here
+        if (editFormConfig.mode === 'inline') {
+            const tr = this.tbody.querySelector(`tr[key="${rowData[this.config.keyField]}"]`);
+            if (!tr) return;
+            const formRow = document.createElement('tr');
+            const formCell = document.createElement('td');
+            formCell.colSpan = tr.children.length;
+            formCell.innerHTML = editFormConfig.HTML;
+            formRow.appendChild(formCell);
+            tr.insertAdjacentElement('afterend', formRow);
+        }
+        // 'popup' mode can be implemented as needed
+        if (editFormConfig.mode === 'popup') {
+            
+        }
+    }
+
     /**
      * Parses the nested column config and calculates rowspan and colspan for the header.
      * @param {Array<Object>} columns The user-defined columns array.
