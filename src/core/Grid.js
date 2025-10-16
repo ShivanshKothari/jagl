@@ -3,6 +3,7 @@ import { Renderer } from './Renderer.js';
 import { EventManager } from './EventManager.js';
 import { FilterMenu } from './FilterMenu.js';
 import { Dropdown } from './ui/Dropdown.js';
+import { ExcelExporter } from './ui/ExcelExporter.js';
 
 
 /**
@@ -90,6 +91,7 @@ export class Grid {
         this.store = new DataStore([], { addSerialColumn: this.config.addSerialColumn });
         this.renderer = new Renderer(this.container);
         this.eventManager = new EventManager(this);
+        this.exporter = new ExcelExporter();
 
         this.init();
     }
@@ -107,7 +109,7 @@ export class Grid {
             this.render(); // Render an empty state
             return;
         }
-        
+
         // Determine the mode and load data accordingly
         const mode = this.config.dataSource.mode?.toLowerCase();
         const source = this.config.dataSource.source;
@@ -177,7 +179,7 @@ export class Grid {
         const fullData = this.store.getData();
         this.pagingState.totalRecords = fullData.length;
         this.pagingState.totalPages = Math.ceil(this.pagingState.totalRecords / this.pagingState.pageSize);
-        
+
         let dataToRender = fullData;
 
         if (this.config.paging.enabled) {
@@ -187,7 +189,7 @@ export class Grid {
         }
 
         // Pass the configured columns to the renderer
-        this.renderer.render(dataToRender, { ...this.config}, this.pagingState);
+        this.renderer.render(dataToRender, { ...this.config }, this.pagingState);
     }
 
     /**
@@ -220,7 +222,7 @@ export class Grid {
             this.activeFilterMenu.close();
             this.activeFilterMenu = null;
         }
-        
+
 
         const uniqueValues = this.store.getUniqueValues(key);
         const currentSelection = this.filterState[key] || [];
@@ -247,26 +249,26 @@ export class Grid {
      * @param {HTMLElement} triggerElement - The DOM element that triggered the action menu.
      */
     handleActionMenuClick(keyField, triggerElement) {
-    
-    const rowData = this.store.getRecordById(keyField, this.config.keyField);
-    if (!rowData) return;
 
-    const dropdownItems = this.config.actionColumn.actions.map(action => {
-        const keyField = this.store.getKeyFieldValue(this.config.actionColumn.keyField, rowData);
-        return {
-            label: action.label,
-            attrs: {key: keyField, ...action.attrs},
-            onClick: () => action.onClick(rowData) 
-        };
-    });
+        const rowData = this.store.getRecordById(keyField, this.config.keyField);
+        if (!rowData) return;
+
+        const dropdownItems = this.config.actionColumn.actions.map(action => {
+            const keyField = this.store.getKeyFieldValue(this.config.actionColumn.keyField, rowData);
+            return {
+                label: action.label,
+                attrs: { key: keyField, ...action.attrs },
+                onClick: () => action.onClick(rowData)
+            };
+        });
 
 
-    new Dropdown(triggerElement, {
-        items: dropdownItems,
-        // You can also pass a custom style config here if you want
-        // config: { panel: { background: 'lightblue' } } 
-    });
-}
+        new Dropdown(triggerElement, {
+            items: dropdownItems,
+            // You can also pass a custom style config here if you want
+            // config: { panel: { background: 'lightblue' } } 
+        });
+    }
 
     /**
      * Sorts the data in the store and re-renders the grid.
@@ -293,12 +295,16 @@ export class Grid {
             delete this.filterState[key];
         }
 
-        this.config.columns.forEach(column => {
+        const markFilteredColumns = (column) => {
             column.hasFilter = Object.hasOwn(this.filterState, column.key) && this.filterState[column.key];
-        })
+            if (column.children && column.children.length > 0) {
+                column.children.forEach(child => markFilteredColumns(child));
+            }
+        }
+        this.config.columns.forEach(col => markFilteredColumns(col));
 
         // Reset to page 1 after filtering
-        this.pagingState.currentPage = 1; 
+        this.pagingState.currentPage = 1;
 
         this.store.filterData(this.filterState);
         // After filtering, you might want to re-sort based on the current sortState
@@ -318,5 +324,31 @@ export class Grid {
         }
         this.pagingState.currentPage = pageNumber;
         this.render();
+    }
+
+    /**
+     * Exports the current grid view to an Excel file.
+     * It uses the rendered table from the DOM.
+     * @param {string} filename - The name for the exported file.
+     */
+    exportToExcel(filename = 'grid-export.xls') {
+        // The table is managed by the Renderer, so we get it from there
+        const tableElement = this.renderer.table;
+        if (tableElement) {
+            this.exporter.export(tableElement, filename, 'Grid Data');
+        } else {
+            console.error("Cannot export: Grid is not rendered yet.");
+        }
+    }
+
+    startEdit(rowData) {
+        this.renderer.showEditForm(rowData, this.config.editForm, (updatedData) => {
+            this.store.updateRecord(this.config.keyField, updatedData);
+            this.render();
+        });
+    }
+
+    endEdit() {
+        this.renderer.hideEditForm();
     }
 }
