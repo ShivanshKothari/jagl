@@ -1,3 +1,5 @@
+import { formatDate } from './utils/DateFunctions.js';
+
 /**
  * Renderer is a utility class for rendering HTML tables (grids) into a specified container element.
  * It supports custom column rendering, action columns, and paging UI.
@@ -92,7 +94,17 @@ export class Renderer {
 
             // Use the flat list of leafColumns to ensure correct order and cell count
             leafColumns.forEach(column => {
-                const cellValue = rowData[column.key] ?? '';
+                let cellValue = rowData[column.key] ?? '';
+
+                // NEW DATE FORMATTING LOGIC
+                // Check if the cell value is a Date object or a string that looks like a date.
+                const dateCandidate = (cellValue instanceof Date) ? cellValue : new Date(cellValue);
+                
+                if (!isNaN(dateCandidate.getTime()) && config.dateFormat) {
+                     cellValue = formatDate(dateCandidate, config.dateFormat);
+                }
+                // END NEW DATE FORMATTING LOGIC
+                
                 const cellHTML = column.render
                     ? column.render(cellValue, rowData)
                     : `<td>${this.escapeHTML(cellValue)}</td>`;

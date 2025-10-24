@@ -78,6 +78,7 @@ export class Grid {
             },
             style: { overflow: 'scroll', margin: 0 },
             renderInShadowDom: false, // NEW: Default to normal DOM rendering
+            dateFormat: 'dd-MMM-yyyy HH:mm',
             ...config // User config override defaults
         };
 
