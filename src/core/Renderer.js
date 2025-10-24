@@ -87,7 +87,7 @@ export class Renderer {
 
             if (config.actionColumn) {
                 // Action menu button
-                trInnerHTML += `<td><button class="action-trigger" style="background-color:none; border: none"><i class="fa fa-bars"></i></button></td>`;
+                trInnerHTML += `<td><button type="button" class="action-trigger" style="background-color:none; border: none"><i class="fa fa-bars"></i></button></td>`;
             }
 
             // Use the flat list of leafColumns to ensure correct order and cell count
