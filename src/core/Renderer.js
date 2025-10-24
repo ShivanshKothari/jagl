@@ -98,31 +98,41 @@ export class Renderer {
             leafColumns.forEach(column => {
                 let cellValue = rowData[column.key] ?? '';
 
-                // --- SNIPPET TO REPLACE THE DATE FORMATTING LOGIC ---
+                // --- FINAL, ROBUST DATE FORMATTING LOGIC ---
                 if (config.dateFormat && cellValue) {
                     let dateCandidate = null;
 
                     if (cellValue instanceof Date) {
-                        // 1. Value is already a Date object (highest priority)
+                        // Case 1: Value is already a Date object (most reliable)
                         dateCandidate = cellValue;
-                    } else if (typeof cellValue === 'string' && cellValue.trim() !== '') {
-                        // 2. Value is a non-empty string, attempt conversion
-                        dateCandidate = new Date(cellValue);
-                    } else if (typeof cellValue === 'number') {
-                        // 3. Value is a number. Apply heuristic to skip small integers (IDs/Ages).
-                        // 100000000000 is used as a rough threshold (around Jan 1, 1973) 
-                        // to distinguish timestamps from small IDs.
-                        if (cellValue > 100000000000) {
+                    } else if (typeof cellValue === 'string') {
+                        const valueString = cellValue.trim();
+                        
+                        // Case 2: Handle common JSON date format like "/Date(1234567890000)/"
+                        const match = valueString.match(/\/Date\((\d+)\)\//);
+                        
+                        if (match) {
+                            // Extract timestamp and create date
+                            dateCandidate = new Date(parseInt(match[1], 10));
+                        } else if (valueString !== '') {
+                            // Case 3: Standard string parsing (ISO, RFC, etc.)
+                            dateCandidate = new Date(valueString);
+                        }
+                    } else if (typeof cellValue === 'number' && cellValue !== 0) {
+                        // Case 4: Handle numeric timestamps. Skip small numbers (like IDs)
+                        // by requiring a value greater than a small timestamp (e.g., 100 seconds after epoch)
+                        // If it is a timestamp, it will be a very large number.
+                        if (cellValue > 100000) { 
                              dateCandidate = new Date(cellValue);
                         }
                     } 
                     
                     // Final check: Only format if we successfully created a VALID date object
                     if (dateCandidate && !isNaN(dateCandidate.getTime())) {
-                         cellValue = this._formatDate(dateCandidate, config.dateFormat);
+                         cellValue = formatDate(dateCandidate, config.dateFormat);
                     }
                 }
-                // --- END CORRECTED SNIPPET ---
+                // --- END FINAL, ROBUST DATE FORMATTING LOGIC ---
                 
                 const cellHTML = column.render
                     ? column.render(cellValue, rowData)
