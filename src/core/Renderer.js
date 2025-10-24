@@ -1,5 +1,3 @@
-import { formatDate } from './utils/DateFunctions.js';
-
 /**
  * Renderer is a utility class for rendering HTML tables (grids) into a specified container element.
  * It supports custom column rendering, action columns, and paging UI.
@@ -9,14 +7,14 @@ import { formatDate } from './utils/DateFunctions.js';
 export class Renderer {
     /**
      * Creates a new Renderer instance.
-     * @param {HTMLElement} containerElement - The DOM element where the table will be rendered.
+     * @param {HTMLElement|ShadowRoot} containerElement - The DOM element or ShadowRoot where the table will be rendered.
      * @throws {Error} If no container element is provided.
      */
     constructor(containerElement) {
         if (!containerElement) {
             throw new Error("Renderer requires a container element.");
         }
-        this.container = containerElement;
+        this.container = containerElement; // This can be a ShadowRoot
         this.table = null;
         this.tbody = null;
     }
@@ -25,14 +23,14 @@ export class Renderer {
      * Renders the grid/table structure into the container.
      * Clears the container, builds the table, header, body, and appends it. Supports custom cell rendering and action columns.
      * @param {Array<Object>} data - The array of data objects to render.
-     * @param {Object} config - The configuration object for the table (columns, style, actionColumn, etc).
+     * @param {Object} config - The configuration object for the table (columns, style, actionColumn, customCSS, etc).
      * @param {Object} pagingState - The current paging state (currentPage, totalPages, etc).
      */
     render(data, config, pagingState) {
-        this.container.innerHTML = '';
+        // Clear the container (ShadowRoot or HTMLElement)
+        this.container.innerHTML = ''; 
 
-
-        // NEW: Inject custom CSS links before rendering content
+        // Inject custom CSS links before rendering content
         this._injectCustomStyles(config.customCSS);
 
         const { headerRows, leafColumns } = this._calculateHeaderStructure(config.columns);
@@ -47,9 +45,7 @@ export class Renderer {
         if (config.style) {
             Object.assign(this.table.style, config.style);
         }
-
-        // ⛔️ REMOVED: Logic to add action column to a separate row is gone from here
-
+        
         // This loop now builds the entire header structure first
         let maxCols = 0;
         headerRows.forEach(row => {
@@ -74,13 +70,13 @@ export class Renderer {
             const actionTh = document.createElement('th');
             actionTh.textContent = config.actionColumn.title || 'Actions';
             // Make it span all header rows
-            actionTh.rowSpan = headerRows.length;
+            actionTh.rowSpan = headerRows.length; 
 
             // Find the first header row and add it
             const firstHeaderRow = thead.querySelector('tr');
             if (firstHeaderRow) {
                 // Prepend to make it the first column, or use appendChild to make it the last
-                firstHeaderRow.prepend(actionTh);
+                firstHeaderRow.prepend(actionTh); 
             }
         }
 
@@ -100,21 +96,25 @@ export class Renderer {
             leafColumns.forEach(column => {
                 let cellValue = rowData[column.key] ?? '';
 
-                // NEW DATE FORMATTING LOGIC
-                // Check if the cell value is a Date object or a string that looks like a date.
-                const dateCandidate = (cellValue instanceof Date) ? cellValue : new Date(cellValue);
-
-                if (!isNaN(dateCandidate.getTime()) && config.dateFormat) {
-                    cellValue = formatDate(dateCandidate, config.dateFormat);
+                // --- CORRECTED DATE FORMATTING LOGIC ---
+                // Only attempt to format if a dateFormat is provided AND the value is not null/empty/zero
+                if (config.dateFormat && cellValue && cellValue !== 0 && cellValue !== '0') {
+                    // Try to convert to Date object if it's not already one
+                    const dateCandidate = (cellValue instanceof Date) ? cellValue : new Date(cellValue);
+                
+                    // Check if the conversion resulted in a VALID Date object
+                    if (!isNaN(dateCandidate.getTime())) {
+                         cellValue = this._formatDate(dateCandidate, config.dateFormat);
+                    }
                 }
-                // END NEW DATE FORMATTING LOGIC
-
+                // --- END CORRECTED DATE FORMATTING LOGIC ---
+                
                 const cellHTML = column.render
                     ? column.render(cellValue, rowData)
                     : `<td>${this.escapeHTML(cellValue)}</td>`;
                 trInnerHTML += cellHTML;
             });
-
+            
             trInnerHTML += `</tr>`;
             tbodyInnerHTML += trInnerHTML;
         });
@@ -193,7 +193,7 @@ export class Renderer {
         }
         // 'popup' mode can be implemented as needed
         if (editFormConfig.mode === 'popup') {
-
+            
         }
     }
 
@@ -217,7 +217,7 @@ export class Renderer {
 
             header.colspan = 1;
             header.rowspan = 1;
-
+            
             headerRows[level].push(header);
 
             if (column.children && column.children.length > 0) {
@@ -251,28 +251,6 @@ export class Renderer {
         return { headerRows, leafColumns };
     }
 
-    /**
-         * Injects external CSS link tags into the container element (or ShadowRoot).
-         * @param {Array<string>} cssHrefs - An array of URLs for the external stylesheets.
-         * @private
-         */
-    _injectCustomStyles(cssHrefs) {
-        if (!Array.isArray(cssHrefs) || cssHrefs.length === 0) {
-            return;
-        }
-
-        cssHrefs.forEach(href => {
-            // Check if the link already exists to prevent duplicate injection on re-render
-            if (this.container.querySelector(`link[href="${href}"]`)) {
-                return;
-            }
-
-            const link = document.createElement('link');
-            link.rel = 'stylesheet';
-            link.href = href;
-            this.container.appendChild(link);
-        });
-    }
 
     /**
      * Escapes HTML characters in a string to prevent XSS attacks.
@@ -292,5 +270,79 @@ export class Renderer {
             "'": '&#039;'
         };
         return text.replace(/[&<>"']/g, (m) => map[m]);
+    }
+    
+    /**
+     * A robust helper to format a Date object based on a format string.
+     * Supports formats like 'yyyy-MM-dd HH:mm', 'dd MMM yyyy', etc.
+     * @param {Date} date - The Date object to format.
+     * @param {string} format - The format string (e.g., 'yyyy-MM-dd HH:mm:ss').
+     * @private
+     */
+    _formatDate(date, format) {
+        if (!(date instanceof Date) || isNaN(date.getTime())) {
+            return ''; // Return empty string for invalid dates
+        }
+
+        const monthNamesShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                               "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+        // Helper to pad numbers with leading zeros
+        const pad = (n) => n.toString().padStart(2, '0');
+
+        const replacements = {
+            'yyyy': date.getFullYear(),
+            'yy': pad(date.getFullYear() % 100),
+            'MM': pad(date.getMonth() + 1), 
+            'M': date.getMonth() + 1, 
+            'MMM': monthNamesShort[date.getMonth()], 
+            'dd': pad(date.getDate()), 
+            'd': date.getDate(), 
+            'HH': pad(date.getHours()), // 24-Hour (00-23)
+            'H': date.getHours(), // 24-Hour (0-23)
+            'hh': pad(date.getHours() % 12 || 12), // 12-Hour Padded (01-12)
+            'h': date.getHours() % 12 || 12, // 12-Hour Unpadded (1-12)
+            'mm': pad(date.getMinutes()), 
+            'm': date.getMinutes(), 
+            'ss': pad(date.getSeconds()), 
+            's': date.getSeconds(), 
+            'tt': date.getHours() < 12 ? 'AM' : 'PM', // AM/PM marker
+        };
+        
+        let formattedString = format;
+        
+        // Keys sorted from longest to shortest to ensure tokens like 'MM' are replaced before 'M'
+        const sortedKeys = Object.keys(replacements).sort((a, b) => b.length - a.length);
+
+        sortedKeys.forEach(key => {
+            // A safer replacement by creating a RegExp for the full token key
+            const regex = new RegExp(key, 'g');
+            formattedString = formattedString.replace(regex, replacements[key]);
+        });
+
+        return formattedString;
+    }
+
+    /**
+     * Injects external CSS link tags into the container element (or ShadowRoot).
+     * @param {Array<string>} cssHrefs - An array of URLs for the external stylesheets.
+     * @private
+     */
+    _injectCustomStyles(cssHrefs) {
+        if (!Array.isArray(cssHrefs) || cssHrefs.length === 0) {
+            return;
+        }
+
+        cssHrefs.forEach(href => {
+            // Check if the link already exists to prevent duplicate injection on re-render
+            if (this.container.querySelector(`link[href="${href}"]`)) {
+                return;
+            }
+
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = href;
+            this.container.appendChild(link);
+        });
     }
 }
