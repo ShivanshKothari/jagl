@@ -31,54 +31,58 @@ export class Renderer {
     render(data, config, pagingState) {
         this.container.innerHTML = '';
 
-    const { headerRows, leafColumns } = this._calculateHeaderStructure(config.columns);
 
-    this.table = document.createElement('table');
-    const thead = document.createElement('thead');
-    this.tbody = document.createElement('tbody');
-    // ⛔️ REMOVED: No longer creating a separate headerRow here
-    // const headerRow = document.createElement('tr'); 
-    this.table.setAttribute("class", "table table-bordered commonTable table-striped");
+        // NEW: Inject custom CSS links before rendering content
+        this._injectCustomStyles(config.customCSS);
 
-    if (config.style) {
-        Object.assign(this.table.style, config.style);
-    }
-    
-    // ⛔️ REMOVED: Logic to add action column to a separate row is gone from here
+        const { headerRows, leafColumns } = this._calculateHeaderStructure(config.columns);
 
-    // This loop now builds the entire header structure first
-    let maxCols = 0;
-    headerRows.forEach(row => {
-        const tr = document.createElement('tr');
-        row.forEach(header => {
-            const th = document.createElement('th');
-            th.textContent = header.title;
-            th.dataset.key = header.key;
-            if (header.colspan > 1) th.colSpan = header.colspan;
-            if (header.rowspan > 1) th.rowSpan = header.rowspan;
-            if (config.filterData && header.colspan === 1) {
-                th.innerHTML += `&nbsp;&nbsp;<i class="fa fa-filter filter-icon" style="${header.hasFilter ? 'color: gray' : ''}" aria-hidden="true"></i>`
-            }
-            tr.appendChild(th);
-        });
-        thead.appendChild(tr);
-        maxCols = Math.max(maxCols, row.length);
-    });
+        this.table = document.createElement('table');
+        const thead = document.createElement('thead');
+        this.tbody = document.createElement('tbody');
+        // ⛔️ REMOVED: No longer creating a separate headerRow here
+        // const headerRow = document.createElement('tr'); 
+        this.table.setAttribute("class", "table table-bordered commonTable table-striped");
 
-    // ✅ NEW: Now that the header rows are built, add the Action column header
-    if (config.actionColumn) {
-        const actionTh = document.createElement('th');
-        actionTh.textContent = config.actionColumn.title || 'Actions';
-        // Make it span all header rows
-        actionTh.rowSpan = headerRows.length; 
-
-        // Find the first header row and add it
-        const firstHeaderRow = thead.querySelector('tr');
-        if (firstHeaderRow) {
-            // Prepend to make it the first column, or use appendChild to make it the last
-            firstHeaderRow.prepend(actionTh); 
+        if (config.style) {
+            Object.assign(this.table.style, config.style);
         }
-    }
+
+        // ⛔️ REMOVED: Logic to add action column to a separate row is gone from here
+
+        // This loop now builds the entire header structure first
+        let maxCols = 0;
+        headerRows.forEach(row => {
+            const tr = document.createElement('tr');
+            row.forEach(header => {
+                const th = document.createElement('th');
+                th.textContent = header.title;
+                th.dataset.key = header.key;
+                if (header.colspan > 1) th.colSpan = header.colspan;
+                if (header.rowspan > 1) th.rowSpan = header.rowspan;
+                if (config.filterData && header.colspan === 1) {
+                    th.innerHTML += `&nbsp;&nbsp;<i class="fa fa-filter filter-icon" style="${header.hasFilter ? 'color: gray' : ''}" aria-hidden="true"></i>`
+                }
+                tr.appendChild(th);
+            });
+            thead.appendChild(tr);
+            maxCols = Math.max(maxCols, row.length);
+        });
+
+        // ✅ NEW: Now that the header rows are built, add the Action column header
+        if (config.actionColumn) {
+            const actionTh = document.createElement('th');
+            actionTh.textContent = config.actionColumn.title || 'Actions';
+            // Make it span all header rows
+            actionTh.rowSpan = headerRows.length;
+
+            // Find the first header row and add it
+            const firstHeaderRow = thead.querySelector('tr');
+            if (firstHeaderRow) {
+                // Prepend to make it the first column, or use appendChild to make it the last
+                firstHeaderRow.prepend(actionTh);
+            }
+        }
 
         let tbodyInnerHTML = '';
         data.forEach(rowData => {
@@ -99,18 +103,18 @@ export class Renderer {
                 // NEW DATE FORMATTING LOGIC
                 // Check if the cell value is a Date object or a string that looks like a date.
                 const dateCandidate = (cellValue instanceof Date) ? cellValue : new Date(cellValue);
-                
+
                 if (!isNaN(dateCandidate.getTime()) && config.dateFormat) {
-                     cellValue = formatDate(dateCandidate, config.dateFormat);
+                    cellValue = formatDate(dateCandidate, config.dateFormat);
                 }
                 // END NEW DATE FORMATTING LOGIC
-                
+
                 const cellHTML = column.render
                     ? column.render(cellValue, rowData)
                     : `<td>${this.escapeHTML(cellValue)}</td>`;
                 trInnerHTML += cellHTML;
             });
-            
+
             trInnerHTML += `</tr>`;
             tbodyInnerHTML += trInnerHTML;
         });
@@ -189,7 +193,7 @@ export class Renderer {
         }
         // 'popup' mode can be implemented as needed
         if (editFormConfig.mode === 'popup') {
-            
+
         }
     }
 
@@ -213,7 +217,7 @@ export class Renderer {
 
             header.colspan = 1;
             header.rowspan = 1;
-            
+
             headerRows[level].push(header);
 
             if (column.children && column.children.length > 0) {
@@ -247,6 +251,28 @@ export class Renderer {
         return { headerRows, leafColumns };
     }
 
+    /**
+         * Injects external CSS link tags into the container element (or ShadowRoot).
+         * @param {Array<string>} cssHrefs - An array of URLs for the external stylesheets.
+         * @private
+         */
+    _injectCustomStyles(cssHrefs) {
+        if (!Array.isArray(cssHrefs) || cssHrefs.length === 0) {
+            return;
+        }
+
+        cssHrefs.forEach(href => {
+            // Check if the link already exists to prevent duplicate injection on re-render
+            if (this.container.querySelector(`link[href="${href}"]`)) {
+                return;
+            }
+
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = href;
+            this.container.appendChild(link);
+        });
+    }
 
     /**
      * Escapes HTML characters in a string to prevent XSS attacks.

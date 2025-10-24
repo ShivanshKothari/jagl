@@ -13,11 +13,11 @@ import { ExcelExporter } from './ui/ExcelExporter.js';
  * both remote URLs and local JSON arrays, and allows for extensible configuration.
  * * @class
  * * @example
- * // Normal DOM rendering (default)
  * const grid = new Grid(document.getElementById('gridContainer'), {
  * columns: [{ key: 'name', title: 'Name' }, { key: 'age', title: 'Age' }],
  * keyField: 'id',
  * dataSource: { mode: 'json', source: [{ id: 1, name: 'Alice', age: 30 }] },
+ * customCSS: ['/path/to/bootstrap.min.css', '/path/to/my-grid-styles.css'] // NEW: Custom CSS array
  * paging: { enabled: true, pageSize: 5 }
  * });
  * * // Shadow DOM rendering
@@ -42,7 +42,9 @@ import { ExcelExporter } from './ui/ExcelExporter.js';
  * @param {Object} [config.sorting] - Initial sorting configuration.
  * @param {Object} [config.style] - Custom style configuration for the grid container.
  * @param {Object} [config.actionColumn] - Configuration for row action menus.
- * @param {boolean} [config.renderInShadowDom=false] - Whether to render the grid inside a Shadow DOM. // NEW
+ * @param {boolean} [config.renderInShadowDom=false] - Whether to render the grid inside a Shadow DOM.
+ * @param {string} [config.dateFormat='yyyy-MM-dd HH:mm'] - Format string for date values (e.g., 'yyyy-MM-dd HH:mm').
+ * @param {Array<string>} [config.customCSS=[]] - An array of URLs for external stylesheets to be applied. // NEW
  * * @property {HTMLElement} container - The container element for the grid.
  * @property {Object} config - The configuration object for the grid.
  * @property {Object} sortState - The current sorting state.
@@ -63,7 +65,9 @@ export class Grid {
      * @param {Object} [config.dataSource] - The data source configuration.
      * @param {string} [config.dataSource.mode] - The data mode, either 'url' or 'json'.
      * @param {string|Array} [config.dataSource.source] - The URL string or the JSON data array.
-     * @param {boolean} [config.renderInShadowDom=false] - Whether to render the grid inside a Shadow DOM. // NEW
+     * @param {boolean} [config.renderInShadowDom=false] - Whether to render the grid inside a Shadow DOM.
+     * @param {string} [config.dateFormat='yyyy-MM-dd HH:mm'] - Format string for date values (e.g., 'yyyy-MM-dd HH:mm').
+     * @param {Array<string>} [config.customCSS=[]] - An array of URLs for external stylesheets to be applied. // NEW
      */
     constructor(containerElement, config = {}) {
         this.container = containerElement;
@@ -77,8 +81,9 @@ export class Grid {
                 pageSize: 10 // Default page size
             },
             style: { overflow: 'scroll', margin: 0 },
-            renderInShadowDom: false, // NEW: Default to normal DOM rendering
-            dateFormat: 'dd-MMM-yyyy HH:mm',
+            renderInShadowDom: false,
+            dateFormat: 'yyyy-MM-dd HH:mm',
+            customCSS: [], // NEW DEFAULT: empty array
             ...config // User config override defaults
         };
 
@@ -97,7 +102,7 @@ export class Grid {
 
         this.store = new DataStore([], { addSerialColumn: this.config.addSerialColumn });
         
-        // --- START NEW LOGIC for Shadow DOM ---
+        // --- START Shadow DOM/Renderer Setup ---
         let renderRoot = containerElement;
         if (this.config.renderInShadowDom) {
             // Use existing shadowRoot or create a new one
@@ -110,7 +115,7 @@ export class Grid {
         }
         // Pass the chosen root element (either original container or shadowRoot) to the Renderer
         this.renderer = new Renderer(renderRoot); 
-        // --- END NEW LOGIC for Shadow DOM ---
+        // --- END Shadow DOM/Renderer Setup ---
         
         this.eventManager = new EventManager(this);
         this.exporter = new ExcelExporter();
