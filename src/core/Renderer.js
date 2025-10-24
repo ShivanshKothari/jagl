@@ -45,6 +45,7 @@ export class Renderer {
     // ⛔️ REMOVED: Logic to add action column to a separate row is gone from here
 
     // This loop now builds the entire header structure first
+    let maxCols = 0;
     headerRows.forEach(row => {
         const tr = document.createElement('tr');
         row.forEach(header => {
@@ -59,6 +60,7 @@ export class Renderer {
             tr.appendChild(th);
         });
         thead.appendChild(tr);
+        maxCols = Math.max(maxCols, row.length);
     });
 
     // ✅ NEW: Now that the header rows are built, add the Action column header
@@ -102,7 +104,7 @@ export class Renderer {
         });
 
         if (!data || data.length === 0) {
-            tbodyInnerHTML = `<td colspan="${finalColumns.length}">No Data Available</td>`;
+            tbodyInnerHTML = `<td colspan="${maxCols}">No Data Available</td>`;
 
         }
 
