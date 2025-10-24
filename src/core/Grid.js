@@ -113,9 +113,10 @@ export class Grid {
         // Determine the mode and load data accordingly
         const mode = this.config.dataSource.mode?.toLowerCase();
         const source = this.config.dataSource.source;
+        const urlOpts = this.config.dataSource.urlOpts || {};
 
         if (mode === 'url') {
-            await this.loadFromURL(source);
+            await this.loadFromURL(source, urlOpts);
         } else if (mode === 'json') {
             this.loadFromJSON(source);
         } else {
@@ -153,9 +154,9 @@ export class Grid {
      * @param {string} url - The URL from which to fetch the data.
      * @async
      */
-    async loadFromURL(url) {
+    async loadFromURL(url, opts) {
         try {
-            const response = await fetch(url);
+            const response = await fetch(url, opts);
             const data = await response.json();
             this._setDataAndRender(data); // Helper
         } catch (error) {
