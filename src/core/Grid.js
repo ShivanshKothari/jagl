@@ -8,22 +8,26 @@ import { ExcelExporter } from './ui/ExcelExporter.js';
 
 /**
  * Represents a dynamic, interactive data grid component.
- * 
- * The `Grid` class provides functionality for rendering tabular data with features such as
+ * * The `Grid` class provides functionality for rendering tabular data with features such as
  * sorting, filtering, pagination, and customizable columns. It supports data loading from
  * both remote URLs and local JSON arrays, and allows for extensible configuration.
- * 
- * @class
- * 
- * @example
+ * * @class
+ * * @example
+ * // Normal DOM rendering (default)
  * const grid = new Grid(document.getElementById('gridContainer'), {
- *   columns: [{ key: 'name', title: 'Name' }, { key: 'age', title: 'Age' }],
- *   keyField: 'id',
- *   dataSource: { mode: 'json', source: [{ id: 1, name: 'Alice', age: 30 }] },
- *   paging: { enabled: true, pageSize: 5 }
+ * columns: [{ key: 'name', title: 'Name' }, { key: 'age', title: 'Age' }],
+ * keyField: 'id',
+ * dataSource: { mode: 'json', source: [{ id: 1, name: 'Alice', age: 30 }] },
+ * paging: { enabled: true, pageSize: 5 }
  * });
- * 
- * @param {HTMLElement} containerElement - The DOM element where the grid will be rendered.
+ * * // Shadow DOM rendering
+ * const gridShadow = new Grid(document.getElementById('shadowContainer'), {
+ * columns: [{ key: 'name', title: 'Name' }, { key: 'age', title: 'Age' }],
+ * keyField: 'id',
+ * dataSource: { mode: 'json', source: [{ id: 1, name: 'Alice', age: 30 }] },
+ * renderInShadowDom: true // Flag to enable Shadow DOM rendering
+ * });
+ * * @param {HTMLElement} containerElement - The DOM element where the grid will be rendered.
  * @param {Object} [config={}] - Configuration options for the grid.
  * @param {Array<Object>} [config.columns=[]] - Array of column definitions.
  * @param {boolean} [config.addSerialColumn=false] - Whether to automatically add a serial number column.
@@ -38,8 +42,8 @@ import { ExcelExporter } from './ui/ExcelExporter.js';
  * @param {Object} [config.sorting] - Initial sorting configuration.
  * @param {Object} [config.style] - Custom style configuration for the grid container.
  * @param {Object} [config.actionColumn] - Configuration for row action menus.
- * 
- * @property {HTMLElement} container - The container element for the grid.
+ * @param {boolean} [config.renderInShadowDom=false] - Whether to render the grid inside a Shadow DOM. // NEW
+ * * @property {HTMLElement} container - The container element for the grid.
  * @property {Object} config - The configuration object for the grid.
  * @property {Object} sortState - The current sorting state.
  * @property {Object} filterState - The current filter state.
@@ -59,6 +63,7 @@ export class Grid {
      * @param {Object} [config.dataSource] - The data source configuration.
      * @param {string} [config.dataSource.mode] - The data mode, either 'url' or 'json'.
      * @param {string|Array} [config.dataSource.source] - The URL string or the JSON data array.
+     * @param {boolean} [config.renderInShadowDom=false] - Whether to render the grid inside a Shadow DOM. // NEW
      */
     constructor(containerElement, config = {}) {
         this.container = containerElement;
@@ -72,6 +77,7 @@ export class Grid {
                 pageSize: 10 // Default page size
             },
             style: { overflow: 'scroll', margin: 0 },
+            renderInShadowDom: false, // NEW: Default to normal DOM rendering
             ...config // User config override defaults
         };
 
@@ -89,7 +95,22 @@ export class Grid {
         };
 
         this.store = new DataStore([], { addSerialColumn: this.config.addSerialColumn });
-        this.renderer = new Renderer(this.container);
+        
+        // --- START NEW LOGIC for Shadow DOM ---
+        let renderRoot = containerElement;
+        if (this.config.renderInShadowDom) {
+            // Use existing shadowRoot or create a new one
+            if (containerElement.shadowRoot) {
+                renderRoot = containerElement.shadowRoot;
+            } else {
+                // Attach a shadow root (mode 'open' allows JS access from outside)
+                renderRoot = containerElement.attachShadow({ mode: 'open' });
+            }
+        }
+        // Pass the chosen root element (either original container or shadowRoot) to the Renderer
+        this.renderer = new Renderer(renderRoot); 
+        // --- END NEW LOGIC for Shadow DOM ---
+        
         this.eventManager = new EventManager(this);
         this.exporter = new ExcelExporter();
 
