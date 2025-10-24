@@ -1,3 +1,5 @@
+import { formatDate } from './utils/DateFunctions.js';
+
 /**
  * Renderer is a utility class for rendering HTML tables (grids) into a specified container element.
  * It supports custom column rendering, action columns, and paging UI.
@@ -96,18 +98,22 @@ export class Renderer {
             leafColumns.forEach(column => {
                 let cellValue = rowData[column.key] ?? '';
 
-                // --- CORRECTED DATE FORMATTING LOGIC ---
-                // Only attempt to format if a dateFormat is provided AND the value is not null/empty/zero
-                if (config.dateFormat && cellValue && cellValue !== 0 && cellValue !== '0') {
-                    // Try to convert to Date object if it's not already one
-                    const dateCandidate = (cellValue instanceof Date) ? cellValue : new Date(cellValue);
-                
-                    // Check if the conversion resulted in a VALID Date object
-                    if (!isNaN(dateCandidate.getTime())) {
-                         cellValue = this._formatDate(dateCandidate, config.dateFormat);
+                if (config.dateFormat && cellValue) {
+                    let dateCandidate = null;
+
+                    if (cellValue instanceof Date) {
+                        // Case 1: Value is already a Date object
+                        dateCandidate = cellValue;
+                    } else if (typeof cellValue === 'string' && cellValue.trim() !== '') {
+                        // Case 2: Value is a non-empty string, attempt conversion
+                        dateCandidate = new Date(cellValue);
+                    } 
+                    // Case 3: All other types (numbers, boolean, etc.) are skipped to prevent IDs/ages from being treated as dates.
+                    
+                    if (dateCandidate && !isNaN(dateCandidate.getTime())) {
+                         cellValue = formatDate(dateCandidate, config.dateFormat);
                     }
                 }
-                // --- END CORRECTED DATE FORMATTING LOGIC ---
                 
                 const cellHTML = column.render
                     ? column.render(cellValue, rowData)
@@ -270,57 +276,6 @@ export class Renderer {
             "'": '&#039;'
         };
         return text.replace(/[&<>"']/g, (m) => map[m]);
-    }
-    
-    /**
-     * A robust helper to format a Date object based on a format string.
-     * Supports formats like 'yyyy-MM-dd HH:mm', 'dd MMM yyyy', etc.
-     * @param {Date} date - The Date object to format.
-     * @param {string} format - The format string (e.g., 'yyyy-MM-dd HH:mm:ss').
-     * @private
-     */
-    _formatDate(date, format) {
-        if (!(date instanceof Date) || isNaN(date.getTime())) {
-            return ''; // Return empty string for invalid dates
-        }
-
-        const monthNamesShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                               "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-        // Helper to pad numbers with leading zeros
-        const pad = (n) => n.toString().padStart(2, '0');
-
-        const replacements = {
-            'yyyy': date.getFullYear(),
-            'yy': pad(date.getFullYear() % 100),
-            'MM': pad(date.getMonth() + 1), 
-            'M': date.getMonth() + 1, 
-            'MMM': monthNamesShort[date.getMonth()], 
-            'dd': pad(date.getDate()), 
-            'd': date.getDate(), 
-            'HH': pad(date.getHours()), // 24-Hour (00-23)
-            'H': date.getHours(), // 24-Hour (0-23)
-            'hh': pad(date.getHours() % 12 || 12), // 12-Hour Padded (01-12)
-            'h': date.getHours() % 12 || 12, // 12-Hour Unpadded (1-12)
-            'mm': pad(date.getMinutes()), 
-            'm': date.getMinutes(), 
-            'ss': pad(date.getSeconds()), 
-            's': date.getSeconds(), 
-            'tt': date.getHours() < 12 ? 'AM' : 'PM', // AM/PM marker
-        };
-        
-        let formattedString = format;
-        
-        // Keys sorted from longest to shortest to ensure tokens like 'MM' are replaced before 'M'
-        const sortedKeys = Object.keys(replacements).sort((a, b) => b.length - a.length);
-
-        sortedKeys.forEach(key => {
-            // A safer replacement by creating a RegExp for the full token key
-            const regex = new RegExp(key, 'g');
-            formattedString = formattedString.replace(regex, replacements[key]);
-        });
-
-        return formattedString;
     }
 
     /**
