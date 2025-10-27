@@ -1,0 +1,4 @@
+echo "" > .nojekyll
+git add .nojekyll
+git commit -m "fix: disable Jekyll for module support"
+git push
