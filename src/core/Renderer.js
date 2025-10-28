@@ -30,13 +30,13 @@ export class Renderer {
      */
     render(data, config, pagingState) {
         // Clear the container (ShadowRoot or HTMLElement)
-        this.container.innerHTML = ''; 
+        this.container.innerHTML = '';
 
         // Inject custom CSS links before rendering content
         this._injectCustomStyles(config.customCSS);
 
         const { headerRows, leafColumns } = this._calculateHeaderStructure(config.columns);
-
+        
         this.table = document.createElement('table');
         const thead = document.createElement('thead');
         this.tbody = document.createElement('tbody');
@@ -47,13 +47,15 @@ export class Renderer {
         if (config.style) {
             Object.assign(this.table.style, config.style);
         }
-        
+
         // This loop now builds the entire header structure first
         let maxCols = 0;
         headerRows.forEach(row => {
             const tr = document.createElement('tr');
             row.forEach(header => {
                 const th = document.createElement('th');
+                Object.assign(th.style, config.thStyle);
+                th.style.top = `${header.level * 28}px`;
                 th.textContent = header.title;
                 th.dataset.key = header.key;
                 if (header.colspan > 1) th.colSpan = header.colspan;
@@ -72,13 +74,13 @@ export class Renderer {
             const actionTh = document.createElement('th');
             actionTh.textContent = config.actionColumn.title || 'Actions';
             // Make it span all header rows
-            actionTh.rowSpan = headerRows.length; 
+            actionTh.rowSpan = headerRows.length;
 
             // Find the first header row and add it
             const firstHeaderRow = thead.querySelector('tr');
             if (firstHeaderRow) {
                 // Prepend to make it the first column, or use appendChild to make it the last
-                firstHeaderRow.prepend(actionTh); 
+                firstHeaderRow.prepend(actionTh);
             }
         }
 
@@ -107,10 +109,10 @@ export class Renderer {
                         dateCandidate = cellValue;
                     } else if (typeof cellValue === 'string') {
                         const valueString = cellValue.trim();
-                        
+
                         // Case 2: Handle common JSON date format like "/Date(1234567890000)/"
                         const match = valueString.match(/\/Date\((\d+)\)\//);
-                        
+
                         if (match) {
                             // Extract timestamp and create date
                             dateCandidate = new Date(parseInt(match[1], 10));
@@ -122,24 +124,24 @@ export class Renderer {
                         // Case 4: Handle numeric timestamps. Skip small numbers (like IDs)
                         // by requiring a value greater than a small timestamp (e.g., 100 seconds after epoch)
                         // If it is a timestamp, it will be a very large number.
-                        if (cellValue > 100000) { 
-                             dateCandidate = new Date(cellValue);
+                        if (cellValue > 100000) {
+                            dateCandidate = new Date(cellValue);
                         }
-                    } 
-                    
+                    }
+
                     // Final check: Only format if we successfully created a VALID date object
                     if (dateCandidate && !isNaN(dateCandidate.getTime())) {
-                         cellValue = formatDate(dateCandidate, config.dateFormat);
+                        cellValue = formatDate(dateCandidate, config.dateFormat);
                     }
                 }
                 // --- END FINAL, ROBUST DATE FORMATTING LOGIC ---
-                
+
                 const cellHTML = column.render
                     ? column.render(cellValue, rowData)
                     : `<td>${this.escapeHTML(cellValue)}</td>`;
                 trInnerHTML += cellHTML;
             });
-            
+
             trInnerHTML += `</tr>`;
             tbodyInnerHTML += trInnerHTML;
         });
@@ -158,6 +160,12 @@ export class Renderer {
         if (config.paging && config.paging.enabled) {
             this.renderPager(pagingState);
         }
+
+        // Apply sticky headers after full layout render
+        if (config.thStyle?.position === 'sticky') {
+            window.requestAnimationFrame(() => this._applyStickyHeaders(this.table));
+        }
+
     }
 
     /**
@@ -218,57 +226,50 @@ export class Renderer {
         }
         // 'popup' mode can be implemented as needed
         if (editFormConfig.mode === 'popup') {
-            
+
         }
     }
 
     /**
-     * Parses the nested column config and calculates rowspan and colspan for the header.
-     * @param {Array<Object>} columns The user-defined columns array.
-     * @returns {Array<Array<Object>>} An array of rows, where each row is an array of header objects.
-     */
+ * Parses nested column config and calculates rowspan, colspan, and level.
+ * @param {Array<Object>} columns - The user-defined column array.
+ * @returns {{ headerRows: Array<Array<Object>>, leafColumns: Array<Object> }}
+ */
     _calculateHeaderStructure(columns) {
         const headerRows = [];
-        const leafColumns = []; // To store the final, flat list of columns for the body
+        const leafColumns = [];
 
         function traverse(column, level) {
-            if (!headerRows[level]) {
-                headerRows[level] = [];
-            }
+            if (!headerRows[level]) headerRows[level] = [];
 
-            const header = {
-                ...column
-            };
-
-            header.colspan = 1;
-            header.rowspan = 1;
-            
+            // clone the object to avoid mutating the original
+            const header = { ...column, level, colspan: 1, rowspan: 1 };
             headerRows[level].push(header);
 
             if (column.children && column.children.length > 0) {
-                header.colspan = 0; // Colspan will be the sum of children's spans
+                header.colspan = 0;
                 column.children.forEach(child => {
                     traverse(child, level + 1);
-                    // The parent's colspan is the sum of its direct children's colspans
                     const childHeader = headerRows[level + 1].find(h => h.key === child.key);
                     header.colspan += childHeader ? childHeader.colspan : 1;
                 });
             } else {
-                // This is a "leaf" column, it will have a data cell in the body
-                leafColumns.push(column);
+                leafColumns.push(header); // store with level as well
             }
         }
 
-        columns.sort((a, b) => a.index - b.index).forEach(col => traverse(col, 0));
+        // start traversal
+        columns
+            .sort((a, b) => a.index - b.index)
+            .forEach(col => traverse(col, 0));
 
-        // Adjust rowspans for cells that don't have children
+        // determine total depth for rowspans
         const maxDepth = headerRows.length;
-        headerRows.forEach(row => {
+        headerRows.forEach((row, level) => {
             row.forEach(header => {
-                // If a header has no children, it should span all the way down
-                const hasChildren = columns.find(c => c.key === header.key)?.children?.length > 0;
+                const hasChildren = header.children && header.children.length > 0;
                 if (!hasChildren) {
-                    header.rowspan = maxDepth - headerRows.indexOf(row);
+                    header.rowspan = maxDepth - level;
                 }
             });
         });
@@ -304,19 +305,61 @@ export class Renderer {
      */
     _injectCustomStyles(cssHrefs) {
         if (!Array.isArray(cssHrefs) || cssHrefs.length === 0) {
-            return;
+            cssHrefs = [];
+        }
+
+        // Always ensure Font Awesome loads
+        const fontAwesomeURL = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css";
+        if (!cssHrefs.includes(fontAwesomeURL)) {
+            cssHrefs.unshift(fontAwesomeURL);
         }
 
         cssHrefs.forEach(href => {
-            // Check if the link already exists to prevent duplicate injection on re-render
-            if (this.container.querySelector(`link[href="${href}"]`)) {
-                return;
-            }
+            // Determine where to append the link:
+            // If container is a ShadowRoot → inject there
+            // Else inject globally into <head>
+            const target = this.container instanceof ShadowRoot
+                ? this.container
+                : document.head;
+
+            // Avoid duplicates
+            if (target.querySelector(`link[href="${href}"]`)) return;
 
             const link = document.createElement('link');
             link.rel = 'stylesheet';
             link.href = href;
-            this.container.appendChild(link);
+
+            // Append where it’ll actually apply
+            target.appendChild(link);
+        });
+    }
+
+
+    _applyStickyHeaders(table) {
+        if (!table) return;
+        const thead = table.querySelector('thead');
+        if (!thead) return;
+
+        let cumulativeTop = 0;
+        const rows = Array.from(thead.rows);
+
+        rows.forEach((row, level) => {
+            const height = row.offsetHeight;
+            Array.from(row.cells).forEach(th => {
+                th.style.position = 'sticky';
+                th.style.top = `${cumulativeTop}px`;
+                th.style.zIndex = 100 + level;
+                // Check computed style, not just inline style
+                const computedBg = getComputedStyle(th).backgroundColor;
+                if (
+                    !computedBg ||
+                    computedBg === 'rgba(0, 0, 0, 0)' || // fully transparent
+                    computedBg === 'transparent'
+                ) {
+                    th.style.background = '#f5f5f5';
+                }
+            });
+            cumulativeTop += height;
         });
     }
 }
