@@ -64,7 +64,7 @@ export class Renderer {
       row.forEach((header) => {
         const th = document.createElement("th");
         Object.assign(th.style, config.thStyle);
-        
+
         th.textContent = header.title;
         th.dataset.key = header.key;
         if (header.colspan > 1) th.colSpan = header.colspan;
@@ -158,7 +158,9 @@ export class Renderer {
 
         const cellHTML = column.render
           ? column.render(cellValue, rowData)
-          : `<td>${this.escapeHTML(cellValue) ?? this.config.nullPlaceholder}</td>`;
+          : `<td>${
+              this.escapeHTML(cellValue) ?? this.config.nullPlaceholder
+            }</td>`;
         trInnerHTML += cellHTML;
       });
 
@@ -183,6 +185,29 @@ export class Renderer {
     // Apply sticky headers after full layout render
     if (config.thStyle?.position === "sticky") {
       window.requestAnimationFrame(() => this._applyStickyHeaders(this.table));
+    }
+
+    // Apply sticky headers after full layout render
+    if (config.thStyle?.position === "sticky") {
+      window.requestAnimationFrame(() => {
+        this._applyStickyHeaders(this.table);
+
+        // 👇 Recalculate stickies when table header resizes
+        if (!this._resizeObserver) {
+          this._resizeObserver = new ResizeObserver(() => {
+            this._applyStickyHeaders(this.table);
+          });
+
+          const thead = this.table.querySelector("thead");
+          if (thead) {
+            this._resizeObserver.observe(thead);
+            // Optional: observe each header row for better precision
+            Array.from(thead.rows).forEach((row) =>
+              this._resizeObserver.observe(row)
+            );
+          }
+        }
+      });
     }
   }
 
@@ -355,35 +380,34 @@ export class Renderer {
   }
 
   _applyStickyHeaders(table) {
-  if (!table) return;
-  const thead = table.querySelector("thead");
-  if (!thead) return;
+    if (!table) return;
+    const thead = table.querySelector("thead");
+    if (!thead) return;
 
-  // Wait a tick to ensure layout is settled
-  requestAnimationFrame(() => {
-    const rows = Array.from(thead.rows);
-    const rowHeights = rows.map(row => row.offsetHeight);
+    // Wait a tick to ensure layout is settled
+    requestAnimationFrame(() => {
+      const rows = Array.from(thead.rows);
+      const rowHeights = rows.map((row) => row.offsetHeight);
 
-    rows.forEach((row, rowIndex) => {
-      const topOffset = rowHeights
-        .slice(0, rowIndex) // sum of heights of all rows above
-        .reduce((a, b) => a + b, 0);
+      rows.forEach((row, rowIndex) => {
+        const topOffset = rowHeights
+          .slice(0, rowIndex) // sum of heights of all rows above
+          .reduce((a, b) => a + b, 0);
 
-      Array.from(row.cells).forEach((th) => {
-        th.style.position = "sticky";
-        th.style.top = `${topOffset}px`;
-        th.style.zIndex = 100 + rowIndex;
+        Array.from(row.cells).forEach((th) => {
+          th.style.position = "sticky";
+          th.style.top = `${topOffset}px`;
+          th.style.zIndex = 100 + rowIndex;
 
-        // Set background to ensure sticky layer isn't transparent
-        const bg = getComputedStyle(th).backgroundColor;
-        if (!bg || bg === "rgba(0, 0, 0, 0)" || bg === "transparent") {
-          th.style.background = "#f5f5f5";
-        }
+          // Set background to ensure sticky layer isn't transparent
+          const bg = getComputedStyle(th).backgroundColor;
+          if (!bg || bg === "rgba(0, 0, 0, 0)" || bg === "transparent") {
+            th.style.background = "#f5f5f5";
+          }
+        });
       });
     });
-  });
-}
-
+  }
 
   _setupColumnResizing(th, config) {
     const resizer = document.createElement("div");
