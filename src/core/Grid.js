@@ -89,6 +89,7 @@ export class Grid {
                 minWidth: config.resizableColumns?.minWidth || 50,
                 maxWidth: config.resizableColumns?.maxWidth || 500
             },
+            nullPlaceholder: '-',
             ...config // User config override defaults
         };
 

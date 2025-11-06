@@ -158,7 +158,7 @@ export class Renderer {
 
         const cellHTML = column.render
           ? column.render(cellValue, rowData)
-          : `<td>${this.escapeHTML(cellValue)}</td>`;
+          : `<td>${this.escapeHTML(cellValue) ?? this.config.nullPlaceholder}</td>`;
         trInnerHTML += cellHTML;
       });
 
