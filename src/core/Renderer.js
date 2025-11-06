@@ -34,6 +34,8 @@ export class Renderer {
 
         // Inject custom CSS links before rendering content
         this._injectCustomStyles(config.customCSS);
+        // Ensure filter icon styles are applied
+        this._ensure_fa_filter_style();
 
         const { headerRows, leafColumns } = this._calculateHeaderStructure(config.columns);
         
@@ -362,4 +364,37 @@ export class Renderer {
             cumulativeTop += height;
         });
     }
+
+    _ensure_fa_filter_style() {
+    // Check if our sheet is already attached
+    const already_attached = document.adoptedStyleSheets.some(sheet => {
+        try {
+            return sheet.cssRules.length &&
+                   [...sheet.cssRules].some(rule => rule.selectorText === '.fa-filter:before');
+        } catch {
+            return false;
+        }
+    });
+
+    if (already_attached) {
+        // Bro, it’s already there — skip re-adding
+        return;
+    }
+
+    // Create new constructable stylesheet
+    const style_sheet = new CSSStyleSheet();
+
+    style_sheet.replaceSync(`
+        .fa-filter:before {
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+    `);
+
+    // Attach it once globally
+    document.adoptedStyleSheets = [
+        ...document.adoptedStyleSheets,
+        style_sheet
+    ];
+}
 }
