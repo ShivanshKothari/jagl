@@ -119,38 +119,8 @@ export class Renderer {
         let cellValue = rowData[column.key] ?? "";
 
         // --- FINAL, ROBUST DATE FORMATTING LOGIC ---
-        if (config.dateFormat && cellValue) {
-          let dateCandidate = null;
-
-          if (cellValue instanceof Date) {
-            // Case 1: Value is already a Date object (most reliable)
-            dateCandidate = cellValue;
-          } else if (typeof cellValue === "string") {
-            const valueString = cellValue.trim();
-
-            // Case 2: Handle common JSON date format like "/Date(1234567890000)/"
-            const match = valueString.match(/\/Date\((\d+)\)\//);
-
-            if (match) {
-              // Extract timestamp and create date
-              dateCandidate = new Date(parseInt(match[1], 10));
-            } else if (valueString !== "") {
-              // Case 3: Standard string parsing (ISO, RFC, etc.)
-              dateCandidate = new Date(valueString);
-            }
-          } else if (typeof cellValue === "number" && cellValue !== 0) {
-            // Case 4: Handle numeric timestamps. Skip small numbers (like IDs)
-            // by requiring a value greater than a small timestamp (e.g., 100 seconds after epoch)
-            // If it is a timestamp, it will be a very large number.
-            if (cellValue > 100000) {
-              dateCandidate = new Date(cellValue);
-            }
-          }
-
-          // Final check: Only format if we successfully created a VALID date object
-          if (dateCandidate && !isNaN(dateCandidate.getTime())) {
+        if (column.datatype && column.datatype.toLowerCase() === "date" && cellValue) {
             cellValue = formatDate(dateCandidate, config.dateFormat);
-          }
         }
         // --- END FINAL, ROBUST DATE FORMATTING LOGIC ---
 
