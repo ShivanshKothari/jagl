@@ -68,7 +68,7 @@ export class Renderer {
         if (header.colspan > 1) th.colSpan = header.colspan;
         if (header.rowspan > 1) th.rowSpan = header.rowspan;
         if (config.filterData && header.colspan === 1) {
-          th.innerHTML += `&nbsp;&nbsp;<i class="fa fa-filter filter-icon" style="opacity:1 !important; visibility:visible !important; ${
+          th.innerHTML += `&nbsp;&nbsp;<i class="fa fa-filter filter-icon ${header.hasFilter ? " has-filter " : ""}" style="opacity:1 !important; visibility:visible !important; ${
             header.hasFilter ? "color: gray" : ""
           }" aria-hidden="true"></i>`;
         }
