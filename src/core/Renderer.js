@@ -116,7 +116,7 @@ export class Renderer {
 
       // Use the flat list of leafColumns to ensure correct order and cell count
       leafColumns.forEach((column) => {
-        let cellValue = rowData[column.key] ?? "";
+        let cellValue = rowData[column.key] ?? config.nullPlaceholder;
 
         // --- FINAL, ROBUST DATE FORMATTING LOGIC ---
         if (
@@ -159,7 +159,7 @@ export class Renderer {
         const cellHTML = column.render
           ? column.render(cellValue, rowData)
           : `<td>${
-              this.escapeHTML(cellValue) ?? this.config.nullPlaceholder
+              this.escapeHTML(cellValue)
             }</td>`;
         trInnerHTML += cellHTML;
       });
