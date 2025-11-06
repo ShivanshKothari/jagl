@@ -84,7 +84,7 @@ export class FilterMenu {
         // Add some basic styling
         this.element.style.border = '1px solid #ccc';
         this.element.style.backgroundColor = 'white';
-        this.element.style.zIndex = '100';
+        this.element.style.zIndex = '999';
     }
 
     /**
