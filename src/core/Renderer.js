@@ -402,7 +402,7 @@ export class Renderer {
         .fa-filter:before {
             opacity: 1 !important;
             visibility: visible !important;
-            color: ${default_color} !important;
+            color: white !important;
             transition: color 0.2s ease-in-out;
         }
 
