@@ -451,4 +451,11 @@ export class Renderer {
     // Luminance formula
     return 0.2126 * R + 0.7152 * G + 0.0722 * B;
   }
+
+  _loader() {
+    const table = this.container.querySelector('table');
+        if (table) {
+            table.querySelector('tbody').innerHTML = '<tr><td colspan="100%" style="text-align:center; padding: 10px;">Loading data...</td></tr>'; 
+        }
+  }
 }

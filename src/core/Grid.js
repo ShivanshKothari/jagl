@@ -150,6 +150,8 @@ export class Grid {
             table.querySelector('tbody').innerHTML = '<tr><td colspan="100%" style="text-align:center; padding: 10px;">Loading data...</td></tr>'; 
         }
 
+        this.renderer._loader();
+
         if (mode === 'url') {
             await this.loadFromURL(source, urlOpts);
         } else if (mode === 'json') {
