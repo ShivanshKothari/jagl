@@ -36,6 +36,8 @@ export class Renderer {
     this._injectCustomStyles(config.customCSS);
     // Ensure filter icon styles are applied
     this._ensure_fa_filter_style();
+    // Ensure resizer styles are applied
+    this._ensure_resizer_style();
 
     const { headerRows, leafColumns } = this._calculateHeaderStructure(
       config.columns
@@ -68,10 +70,17 @@ export class Renderer {
         if (header.colspan > 1) th.colSpan = header.colspan;
         if (header.rowspan > 1) th.rowSpan = header.rowspan;
         if (config.filterData && header.colspan === 1) {
-          th.innerHTML += `&nbsp;&nbsp;<i class="fa fa-filter filter-icon ${header.hasFilter ? " has-filter " : ""}" style="opacity:1 !important; visibility:visible !important; ${
+          th.innerHTML += `&nbsp;&nbsp;<i class="fa fa-filter filter-icon ${
+            header.hasFilter ? " has-filter " : ""
+          }" style="opacity:1 !important; visibility:visible !important; ${
             header.hasFilter ? "color: gray" : ""
           }" aria-hidden="true"></i>`;
         }
+
+        if (config.resizableColumns?.enabled) {
+          this._setupColumnResizing(th, config);
+        }
+
         tr.appendChild(th);
       });
       thead.appendChild(tr);
@@ -371,6 +380,62 @@ export class Renderer {
     });
   }
 
+  _setupColumnResizing(th, config) {
+    const resizer = document.createElement("div");
+    resizer.className = "column-resizer";
+    resizer.style.cssText = `
+            width: 5px;
+            height: 100%;
+            position: absolute;
+            right: 0;
+            top: 0;
+            cursor: col-resize;
+            user-select: none;
+        `;
+
+    th.style.position = "relative";
+    th.appendChild(resizer);
+
+    let startX, startWidth;
+
+    const startResize = (e) => {
+      startX = e.pageX;
+      startWidth = th.offsetWidth;
+      document.addEventListener("mousemove", resize);
+      document.addEventListener("mouseup", stopResize);
+    };
+
+    const resize = (e) => {
+      const width = startWidth + (e.pageX - startX);
+      if (
+        width >= config.resizableColumns.minWidth &&
+        width <= config.resizableColumns.maxWidth
+      ) {
+        th.style.width = `${width}px`;
+      }
+    };
+
+    const stopResize = () => {
+      document.removeEventListener("mousemove", resize);
+      document.removeEventListener("mouseup", stopResize);
+    };
+
+    resizer.addEventListener("mousedown", startResize);
+  }
+
+  _ensure_resizer_style() {
+    const style = document.createElement('style');
+    style.textContent = `
+        .column-resizer:hover {
+            background-color: #0000001a;
+        }
+        .column-resizer:active {
+            background-color: #0000004d;
+        }
+    `;
+    this.container.appendChild(style);
+}
+
   _ensure_fa_filter_style() {
     // Check if our sheet is already attached
     const already_attached = document.adoptedStyleSheets.some((sheet) => {
@@ -453,9 +518,10 @@ export class Renderer {
   }
 
   _loader() {
-    const table = this.container.querySelector('table');
-        if (table) {
-            table.querySelector('tbody').innerHTML = '<tr><td colspan="100%" style="text-align:center; padding: 10px;">Loading data...</td></tr>'; 
-        }
+    const table = this.container.querySelector("table");
+    if (table) {
+      table.querySelector("tbody").innerHTML =
+        '<tr><td colspan="100%" style="text-align:center; padding: 10px;">Loading data...</td></tr>';
+    }
   }
 }

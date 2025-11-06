@@ -84,6 +84,11 @@ export class Grid {
             renderInShadowDom: false,
             dateFormat: 'yyyy-MM-dd HH:mm',
             customCSS: [], // NEW DEFAULT: empty array
+            resizableColumns: {
+                enabled: config.resizableColumns?.enabled || false,
+                minWidth: config.resizableColumns?.minWidth || 50,
+                maxWidth: config.resizableColumns?.maxWidth || 500
+            },
             ...config // User config override defaults
         };
 
