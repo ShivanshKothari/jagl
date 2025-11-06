@@ -145,6 +145,10 @@ export class Grid {
         const mode = this.config.dataSource.mode?.toLowerCase();
         const source = this.config.dataSource.source;
         const urlOpts = this.config.dataSource.urlOpts || {};
+        const table = document.querySelector(this.container + ' table');
+        if (table) {
+            table.querySelector('tbody').innerHTML = '<tr><td colspan="100%" style="text-align:center; padding: 10px;">Loading data...</td></tr>'; 
+        }
 
         if (mode === 'url') {
             await this.loadFromURL(source, urlOpts);
