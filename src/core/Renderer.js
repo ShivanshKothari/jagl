@@ -120,7 +120,7 @@ export class Renderer {
 
         // --- FINAL, ROBUST DATE FORMATTING LOGIC ---
         if (column.datatype && column.datatype.toLowerCase() === "date" && cellValue) {
-            cellValue = formatDate(dateCandidate, config.dateFormat);
+            cellValue = formatDate(new Date(cellValue), config.dateFormat);
         }
         // --- END FINAL, ROBUST DATE FORMATTING LOGIC ---
 
