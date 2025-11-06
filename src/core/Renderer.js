@@ -119,9 +119,40 @@ export class Renderer {
         let cellValue = rowData[column.key] ?? "";
 
         // --- FINAL, ROBUST DATE FORMATTING LOGIC ---
-        if (column.datatype && column.datatype.toLowerCase() === "date" && cellValue) {
-            console.log('Formatting date for column:', column.key, column, 'with value:', cellValue);
-            cellValue = formatDate(new Date(cellValue), config.dateFormat);
+        if (
+          config.dateFormat &&
+          column.datatype &&
+          column.datatype.toLowerCase() === "date" &&
+          cellValue
+        ) {
+          let dateCandidate = null;
+
+          if (cellValue instanceof Date) {
+            // Case 1: Value is already a Date object (most reliable)
+            dateCandidate = cellValue;
+          } else if (typeof cellValue === "string") {
+            const valueString = cellValue.trim();
+
+            // Case 2: Handle common JSON date format like "/Date(1234567890000)/"
+            const match = valueString.match(/\/Date\((\d+)\)\//);
+
+            if (match) {
+              // Extract timestamp and create date
+              dateCandidate = new Date(parseInt(match[1], 10));
+            } else if (valueString !== "") {
+              // Case 3: Standard string parsing (ISO, RFC, etc.)
+              dateCandidate = new Date(valueString);
+            }
+          } else if (typeof cellValue === "number" && cellValue !== 0) {
+            // Case 4: Handle numeric timestamps. Skip small numbers (like IDs)
+            // by requiring a value greater than a small timestamp (e.g., 100 seconds after epoch)
+            // If it is a timestamp, it will be a very large number.
+            if (cellValue > 100000) {
+              dateCandidate = new Date(cellValue);
+            }
+          }
+          // console.log('Formatting date for column:', column.key, column, 'with value:', cellValue);
+          cellValue = formatDate(dateCandidate, config.dateFormat);
         }
         // --- END FINAL, ROBUST DATE FORMATTING LOGIC ---
 
@@ -351,10 +382,10 @@ export class Renderer {
     });
   }
 
- _setupColumnResizing(th, config) {
-  const resizer = document.createElement("div");
-  resizer.className = "column-resizer";
-  resizer.style.cssText = `
+  _setupColumnResizing(th, config) {
+    const resizer = document.createElement("div");
+    resizer.className = "column-resizer";
+    resizer.style.cssText = `
     width: 5px;
     height: 100%;
     position: absolute;
@@ -365,61 +396,60 @@ export class Renderer {
     z-index: 10;
   `;
 
-  th.style.position = "relative";
-  th.appendChild(resizer);
+    th.style.position = "relative";
+    th.appendChild(resizer);
 
-  let startX, startWidth;
-  let isResizing = false;
-  let rafId = null;
+    let startX, startWidth;
+    let isResizing = false;
+    let rafId = null;
 
-  // === Utility: simple throttle via requestAnimationFrame ===
-  const scheduleResize = (width) => {
-    if (rafId) cancelAnimationFrame(rafId);
-    rafId = requestAnimationFrame(() => {
-      th.style.width = `${width}px`;
-    });
-  };
+    // === Utility: simple throttle via requestAnimationFrame ===
+    const scheduleResize = (width) => {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        th.style.width = `${width}px`;
+      });
+    };
 
-  const startResize = (e) => {
-    startX = e.pageX;
-    startWidth = th.offsetWidth;
-    isResizing = true;
-    document.body.style.cursor = "col-resize";
-    document.body.style.userSelect = "none";
+    const startResize = (e) => {
+      startX = e.pageX;
+      startWidth = th.offsetWidth;
+      isResizing = true;
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
 
-    document.addEventListener("mousemove", onMouseMove);
-    document.addEventListener("mouseup", stopResize);
-  };
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", stopResize);
+    };
 
-  const onMouseMove = (e) => {
-    if (!isResizing) return;
-    const delta = e.pageX - startX;
-    const newWidth = startWidth + delta;
+    const onMouseMove = (e) => {
+      if (!isResizing) return;
+      const delta = e.pageX - startX;
+      const newWidth = startWidth + delta;
 
-    if (
-      newWidth >= config.resizableColumns.minWidth &&
-      newWidth <= config.resizableColumns.maxWidth
-    ) {
-      scheduleResize(newWidth);
-    }
-  };
+      if (
+        newWidth >= config.resizableColumns.minWidth &&
+        newWidth <= config.resizableColumns.maxWidth
+      ) {
+        scheduleResize(newWidth);
+      }
+    };
 
-  const stopResize = () => {
-    if (!isResizing) return;
-    isResizing = false;
-    document.body.style.cursor = "";
-    document.body.style.userSelect = "";
-    document.removeEventListener("mousemove", onMouseMove);
-    document.removeEventListener("mouseup", stopResize);
-    if (rafId) cancelAnimationFrame(rafId);
-  };
+    const stopResize = () => {
+      if (!isResizing) return;
+      isResizing = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", stopResize);
+      if (rafId) cancelAnimationFrame(rafId);
+    };
 
-  resizer.addEventListener("mousedown", startResize);
-}
-
+    resizer.addEventListener("mousedown", startResize);
+  }
 
   _ensure_resizer_style() {
-    const style = document.createElement('style');
+    const style = document.createElement("style");
     style.textContent = `
         .column-resizer:hover {
             background-color: #0000001a;
@@ -429,7 +459,7 @@ export class Renderer {
         }
     `;
     this.container.appendChild(style);
-}
+  }
 
   _ensure_fa_filter_style() {
     // Check if our sheet is already attached
