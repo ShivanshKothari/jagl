@@ -35,9 +35,9 @@ export class Renderer {
     // Inject custom CSS links before rendering content
     this._injectCustomStyles(config.customCSS);
     // Ensure filter icon styles are applied
-    this._ensure_fa_filter_style();
+    this._ensureFaFilterStyle();
     // Ensure resizer styles are applied
-    this._ensure_resizer_style();
+    this._ensureResizerStyle();
 
     const { headerRows, leafColumns } = this._calculateHeaderStructure(
       config.columns
@@ -64,7 +64,7 @@ export class Renderer {
       row.forEach((header) => {
         const th = document.createElement("th");
         Object.assign(th.style, config.thStyle);
-        th.style.top = `${header.level * 28}px`;
+        
         th.textContent = header.title;
         th.dataset.key = header.key;
         if (header.colspan > 1) th.colSpan = header.colspan;
@@ -355,32 +355,35 @@ export class Renderer {
   }
 
   _applyStickyHeaders(table) {
-    if (!table) return;
-    const thead = table.querySelector("thead");
-    if (!thead) return;
+  if (!table) return;
+  const thead = table.querySelector("thead");
+  if (!thead) return;
 
-    let cumulativeTop = 0;
+  // Wait a tick to ensure layout is settled
+  requestAnimationFrame(() => {
     const rows = Array.from(thead.rows);
+    const rowHeights = rows.map(row => row.offsetHeight);
 
-    rows.forEach((row, level) => {
-      const height = row.offsetHeight;
+    rows.forEach((row, rowIndex) => {
+      const topOffset = rowHeights
+        .slice(0, rowIndex) // sum of heights of all rows above
+        .reduce((a, b) => a + b, 0);
+
       Array.from(row.cells).forEach((th) => {
         th.style.position = "sticky";
-        th.style.top = `${cumulativeTop}px`;
-        th.style.zIndex = 100 + level;
-        // Check computed style, not just inline style
-        const computedBg = getComputedStyle(th).backgroundColor;
-        if (
-          !computedBg ||
-          computedBg === "rgba(0, 0, 0, 0)" || // fully transparent
-          computedBg === "transparent"
-        ) {
+        th.style.top = `${topOffset}px`;
+        th.style.zIndex = 100 + rowIndex;
+
+        // Set background to ensure sticky layer isn't transparent
+        const bg = getComputedStyle(th).backgroundColor;
+        if (!bg || bg === "rgba(0, 0, 0, 0)" || bg === "transparent") {
           th.style.background = "#f5f5f5";
         }
       });
-      cumulativeTop += height;
     });
-  }
+  });
+}
+
 
   _setupColumnResizing(th, config) {
     const resizer = document.createElement("div");
@@ -448,7 +451,7 @@ export class Renderer {
     resizer.addEventListener("mousedown", startResize);
   }
 
-  _ensure_resizer_style() {
+  _ensureResizerStyle() {
     const style = document.createElement("style");
     style.textContent = `
         .column-resizer:hover {
@@ -461,7 +464,7 @@ export class Renderer {
     this.container.appendChild(style);
   }
 
-  _ensure_fa_filter_style() {
+  _ensureFaFilterStyle() {
     // Check if our sheet is already attached
     const already_attached = document.adoptedStyleSheets.some((sheet) => {
       try {
@@ -482,7 +485,7 @@ export class Renderer {
     const bg = th ? getComputedStyle(th).backgroundColor : "#f5f5f5";
 
     // --- Convert RGB(A) to luminance ---
-    const luminance = this._calculate_luminance(bg);
+    const luminance = this._calculateLuminance(bg);
     const default_color = luminance < 0.5 ? "white" : "#444"; // auto contrast
 
     const style_sheet = new CSSStyleSheet();
@@ -518,7 +521,7 @@ export class Renderer {
    * @param {string} color - CSS color string like 'rgb(45, 67, 89)' or 'rgba(45,67,89,1)'
    * @returns {number} luminance between 0 (dark) and 1 (light)
    */
-  _calculate_luminance(color) {
+  _calculateLuminance(color) {
     let r = 245,
       g = 245,
       b = 245; // fallback light gray
@@ -531,12 +534,12 @@ export class Renderer {
     }
 
     // sRGB to linear
-    const srgb_to_linear = (c) =>
+    const srgbToLinear = (c) =>
       c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
 
-    const R = srgb_to_linear(r);
-    const G = srgb_to_linear(g);
-    const B = srgb_to_linear(b);
+    const R = srgbToLinear(r);
+    const G = srgbToLinear(g);
+    const B = srgbToLinear(b);
 
     // Luminance formula
     return 0.2126 * R + 0.7152 * G + 0.0722 * B;
