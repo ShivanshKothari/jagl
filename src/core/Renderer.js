@@ -380,48 +380,72 @@ export class Renderer {
     });
   }
 
-  _setupColumnResizing(th, config) {
-    const resizer = document.createElement("div");
-    resizer.className = "column-resizer";
-    resizer.style.cssText = `
-            width: 5px;
-            height: 100%;
-            position: absolute;
-            right: 0;
-            top: 0;
-            cursor: col-resize;
-            user-select: none;
-        `;
+ _setupColumnResizing(th, config) {
+  const resizer = document.createElement("div");
+  resizer.className = "column-resizer";
+  resizer.style.cssText = `
+    width: 5px;
+    height: 100%;
+    position: absolute;
+    right: 0;
+    top: 0;
+    cursor: col-resize;
+    user-select: none;
+    z-index: 10;
+  `;
 
-    th.style.position = "relative";
-    th.appendChild(resizer);
+  th.style.position = "relative";
+  th.appendChild(resizer);
 
-    let startX, startWidth;
+  let startX, startWidth;
+  let isResizing = false;
+  let rafId = null;
 
-    const startResize = (e) => {
-      startX = e.pageX;
-      startWidth = th.offsetWidth;
-      document.addEventListener("mousemove", resize);
-      document.addEventListener("mouseup", stopResize);
-    };
+  // === Utility: simple throttle via requestAnimationFrame ===
+  const scheduleResize = (width) => {
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(() => {
+      th.style.width = `${width}px`;
+    });
+  };
 
-    const resize = (e) => {
-      const width = startWidth + (e.pageX - startX);
-      if (
-        width >= config.resizableColumns.minWidth &&
-        width <= config.resizableColumns.maxWidth
-      ) {
-        th.style.width = `${width}px`;
-      }
-    };
+  const startResize = (e) => {
+    startX = e.pageX;
+    startWidth = th.offsetWidth;
+    isResizing = true;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
 
-    const stopResize = () => {
-      document.removeEventListener("mousemove", resize);
-      document.removeEventListener("mouseup", stopResize);
-    };
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", stopResize);
+  };
 
-    resizer.addEventListener("mousedown", startResize);
-  }
+  const onMouseMove = (e) => {
+    if (!isResizing) return;
+    const delta = e.pageX - startX;
+    const newWidth = startWidth + delta;
+
+    if (
+      newWidth >= config.resizableColumns.minWidth &&
+      newWidth <= config.resizableColumns.maxWidth
+    ) {
+      scheduleResize(newWidth);
+    }
+  };
+
+  const stopResize = () => {
+    if (!isResizing) return;
+    isResizing = false;
+    document.body.style.cursor = "";
+    document.body.style.userSelect = "";
+    document.removeEventListener("mousemove", onMouseMove);
+    document.removeEventListener("mouseup", stopResize);
+    if (rafId) cancelAnimationFrame(rafId);
+  };
+
+  resizer.addEventListener("mousedown", startResize);
+}
+
 
   _ensure_resizer_style() {
     const style = document.createElement('style');
