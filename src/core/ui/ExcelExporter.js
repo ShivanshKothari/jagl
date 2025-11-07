@@ -92,16 +92,16 @@ export class ExcelExporter {
       if (!target) return;
 
       // --- Handle date conversion for Excel export ---
-      const styleAttr = target.getAttribute("style") || "";
-      const match = styleAttr.match(/mso-number-format\s*:\s*['"]?([^;'"]+)['"]?/i);
-      const msoFormat = match ? match[1].trim() : "";
-      if (msoFormat) {
-        const text = target.textContent.trim();
-        const excelValue = dateToExcelSerial(text);
-        if (excelValue !== "") {
-          target.textContent = excelValue;
-        }
-      }
+    //   const styleAttr = target.getAttribute("style") || "";
+    //   const match = styleAttr.match(/mso-number-format\s*:\s*['"]?([^;'"]+)['"]?/i);
+    //   const msoFormat = match ? match[1].trim() : "";
+    //   if (msoFormat) {
+    //     const text = target.textContent.trim();
+    //     const excelValue = dateToExcelSerial(text);
+    //     if (excelValue !== "") {
+    //       target.textContent = excelValue;
+    //     }
+    //   }
 
       // --- Copy computed styles from live table ---
       const computed = window.getComputedStyle(src);

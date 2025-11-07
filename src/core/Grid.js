@@ -381,7 +381,7 @@ export class Grid {
      */
     exportToExcel(opts) {
         let filename = opts?.filename || 'grid-data.xlsx';
-        filename.endsWith('.xlsx') || (filename += '.xlsx');
+        filename.endsWith('.xls') || (filename += '.xls');
 
         if (opts.withTimestamp) {
             const timestamp = new Date();
