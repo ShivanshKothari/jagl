@@ -4,6 +4,7 @@ import { EventManager } from './EventManager.js';
 import { FilterMenu } from './FilterMenu.js';
 import { Dropdown } from './ui/Dropdown.js';
 import { ExcelExporter } from './ui/ExcelExporter.js';
+import { formatDate } from './utils/DateFunctions.js';
 
 
 /**
@@ -378,7 +379,16 @@ export class Grid {
      * It uses the rendered table from the DOM.
      * @param {string} filename - The name for the exported file.
      */
-    exportToExcel(filename = 'grid-export.xls') {
+    exportToExcel(opts) {
+        let filename = opts?.filename || 'grid-data.xlsx';
+        filename.endsWith('.xlsx') || (filename += '.xlsx');
+
+        if (opts.withTimestamp) {
+            const timestamp = new Date();
+            const nameParts = filename.split('.xlsx');
+            filename = `${nameParts[0]}_${formatDate(timestamp, 'yyyyMMdd_HHmmss')}.xlsx`;
+        }
+
         // The table is managed by the Renderer, so we get it from there
         const tableElement = this.renderer.table;
         if (tableElement) {

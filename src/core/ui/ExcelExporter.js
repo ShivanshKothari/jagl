@@ -1,4 +1,5 @@
 import { CssLogics } from "../utils/CssLogics.js";
+import { dateToExcelSerial } from "../utils/DateFunctions.js";
 
 export class ExcelExporter {
   /**
@@ -8,9 +9,16 @@ export class ExcelExporter {
    * @param {string} sheetName - The name of the worksheet inside the Excel file.
    * @param {Object} [styleRules={}] - Optional styleRules from Renderer to apply.
    */
-  export(tableElement, filename = "export.xls", sheetName = "Sheet1", styleRules = {}) {
+  export(
+    tableElement,
+    filename = "export.xls",
+    sheetName = "Sheet1",
+    styleRules = {}
+  ) {
     if (!tableElement || tableElement.tagName !== "TABLE") {
-      console.error("ExcelExporter.export requires a valid HTML <table> element.");
+      console.error(
+        "ExcelExporter.export requires a valid HTML <table> element."
+      );
       return;
     }
 
@@ -75,18 +83,38 @@ export class ExcelExporter {
    * Copies computed styles from the DOM table (Renderer) to the cloned table.
    * Ensures Excel sees inline CSS for font, alignment, background, borders, etc.
    */
-  _applyComputedStyles(table, sourceTable) {
+  _applyComputedStyles(targetTable, sourceTable) {
     const sourceCells = sourceTable.querySelectorAll("th, td");
-    const targetCells = table.querySelectorAll("th, td");
+    const targetCells = targetTable.querySelectorAll("th, td");
 
     sourceCells.forEach((src, i) => {
       const target = targetCells[i];
       if (!target) return;
 
+      // --- Handle date conversion for Excel export ---
+      const styleAttr = target.getAttribute("style") || "";
+      const match = styleAttr.match(/mso-number-format\s*:\s*['"]?([^;'"]+)['"]?/i);
+      const msoFormat = match ? match[1].trim() : "";
+      if (msoFormat) {
+        const text = target.textContent.trim();
+        const excelValue = dateToExcelSerial(text);
+        if (excelValue !== "") {
+          target.textContent = excelValue;
+        }
+      }
+
+      // --- Copy computed styles from live table ---
       const computed = window.getComputedStyle(src);
       const keys = [
-        "fontFamily", "fontSize", "color", "backgroundColor",
-        "textAlign", "verticalAlign", "fontWeight", "border", "padding"
+        "fontFamily",
+        "fontSize",
+        "color",
+        "backgroundColor",
+        "textAlign",
+        "verticalAlign",
+        "fontWeight",
+        "border",
+        "padding",
       ];
 
       keys.forEach((key) => {
@@ -94,5 +122,4 @@ export class ExcelExporter {
       });
     });
   }
-
 }

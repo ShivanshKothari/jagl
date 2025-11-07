@@ -53,3 +53,24 @@ export function formatDate(date, format) {
 
   return formatted;
 }
+
+/**
+ * Converts a JS Date to Excel serial number (days since 1899-12-30).
+ * Returns blank string if date is invalid.
+ * @param {Date|string|number} date - A Date object or valid date string/timestamp
+ * @returns {number|string} Excel serial number, or '' if invalid
+ */
+export function dateToExcelSerial(date) {
+  if (!date) return ""; // empty/null check
+
+  let dateObj = date instanceof Date ? date : new Date(date);
+  if (isNaN(dateObj.getTime())) {
+    return ""; // invalid date
+  }
+
+  const excelEpoch = new Date(Date.UTC(1899, 11, 30)); // Excel's day 0 (Dec 30, 1899)
+  const diffInDays = (dateObj - excelEpoch) / (1000 * 60 * 60 * 24);
+
+  // Guard against any math edge cases
+  return isFinite(diffInDays) ? diffInDays : "";
+}
