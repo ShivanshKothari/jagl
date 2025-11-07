@@ -24,6 +24,7 @@ export class ExcelExporter {
 
     // 1️⃣ Clone the table so we don’t touch the original
     const clonedTable = tableElement.cloneNode(true);
+    clonedTable.querySelector('colgroup')?.remove(); // Remove colgroup if present
 
     // 2️⃣ Apply renderer styleRules inline for Excel compatibility
     this._applyStyleRulesInline(clonedTable, styleRules);
