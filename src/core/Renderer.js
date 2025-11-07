@@ -47,19 +47,52 @@ export class Renderer {
       config.columns
     );
 
+    // ...
     this.table = document.createElement("table");
     const thead = document.createElement("thead");
     this.tbody = document.createElement("tbody");
-    // ⛔️ REMOVED: No longer creating a separate headerRow here
-    // const headerRow = document.createElement('tr');
     this.table.setAttribute(
       "class",
       "table table-bordered commonTable table-striped"
     );
 
+    // ✅ ENFORCE FIXED LAYOUT
+    this.table.style.tableLayout = "fixed";
+    this.table.style.boxSizing = "border-box";
+
     if (config.style) {
       Object.assign(this.table.style, config.style);
     }
+
+    // ✅ ADD <colgroup> TO MANAGE FIXED WIDTHS
+    const colgroup = document.createElement("colgroup");
+
+    // Add Action Column <col>
+    if (config.actionColumn) {
+      const col = document.createElement("col");
+      if (config.actionColumn.width) {
+        col.style.width = config.actionColumn.width;
+      }
+      colgroup.appendChild(col);
+    }
+
+    // Add Leaf Column <col> elements
+    leafColumns.forEach((column) => {
+      const col = document.createElement("col");
+      if (column.width) {
+        col.style.width = column.width;
+      } else {
+        // Optional: log a warning if a width isn't provided,
+        // as it's critical for 'fixed' layout
+        console.warn(
+          `Grid: Column "${column.key}" should have a 'width' property for 'table-layout: fixed' to work reliably.`
+        );
+      }
+      colgroup.appendChild(col);
+    });
+
+    this.table.appendChild(colgroup);
+    // ...
 
     // This loop now builds the entire header structure first
     let maxCols = 0;
@@ -68,11 +101,13 @@ export class Renderer {
       row.forEach((header) => {
         const th = document.createElement("th");
         Object.assign(th.style, config.thStyle);
+        th.style.boxSizing = "border-box";
 
         th.textContent = header.title;
         th.dataset.key = header.key;
         if (header.colspan > 1) th.colSpan = header.colspan;
         if (header.rowspan > 1) th.rowSpan = header.rowspan;
+
         if (config.filterData && header.colspan === 1) {
           th.innerHTML += `&nbsp;&nbsp;<i class="fa fa-filter filter-icon ${
             header.hasFilter ? " has-filter " : ""
@@ -81,7 +116,8 @@ export class Renderer {
           }" aria-hidden="true"></i>`;
         }
 
-        if (config.resizableColumns?.enabled) {
+        // ✅ FIX: Only add resizer to leaf columns (which have colspan = 1)
+        if (config.resizableColumns?.enabled && header.colspan === 1) {
           this._setupColumnResizing(th, config);
         }
 
@@ -217,32 +253,35 @@ export class Renderer {
       this.renderPager(pagingState);
     }
 
-    // Apply sticky headers after full layout render
-    if (config.thStyle?.position === "sticky") {
-      window.requestAnimationFrame(() => this._applyStickyHeaders(this.table));
-    }
+    // Apply sticky headers and frozen columns after full layout render
+    const hasStickyHeaders = config.thStyle?.position === "sticky";
+    // Check if any leaf column or the action column is set to freeze
+    const hasFrozenColumns =
+      config.actionColumn?.freeze === true ||
+      (leafColumns && leafColumns.some((c) => c.freeze === true));
 
-    // Apply sticky headers after full layout render
-    if (config.thStyle?.position === "sticky") {
+    if (hasStickyHeaders || hasFrozenColumns) {
       window.requestAnimationFrame(() => {
-        this._applyStickyHeaders(this.table);
-
-        // 👇 Recalculate stickies when table header resizes
-        if (!this._resizeObserver) {
-          this._resizeObserver = new ResizeObserver(() => {
-            this._applyStickyHeaders(this.table);
-          });
-
-          const thead = this.table.querySelector("thead");
-          if (thead) {
-            this._resizeObserver.observe(thead);
-            // Optional: observe each header row for better precision
-            Array.from(thead.rows).forEach((row) =>
-              this._resizeObserver.observe(row)
-            );
-          }
-        }
+        // ✅ Pass headerRows and leafColumns
+        this._applyStickyStyles(this.table, config, leafColumns, headerRows);
       });
+
+      // 👇 Recalculate stickies when table resizes
+      if (!this._resizeObserver) {
+        this._resizeObserver = new ResizeObserver(() => {
+          // ✅ Pass headerRows and leafColumns
+          this._applyStickyStyles(this.table, config, leafColumns, headerRows);
+        });
+
+        const thead = this.table.querySelector("thead");
+        if (thead) {
+          this._resizeObserver.observe(thead);
+          // Optional: observe each header row for better precision
+          Array.from(thead.rows).forEach((row) =>
+            this._resizeObserver.observe(row)
+          );
+        }
+      }
     }
   }
 
@@ -318,24 +357,34 @@ export class Renderer {
     const headerRows = [];
     const leafColumns = [];
 
-    function traverse(column, level) {
+    // ✅ MODIFIED: Added 'parentIsFrozen' parameter
+    function traverse(column, level, parentIsFrozen = false) {
       if (!headerRows[level]) headerRows[level] = [];
+
+      // ✅ A column is frozen if its parent is frozen, OR if it's set to freeze itself.
+      const currentlyFrozen = parentIsFrozen || column.freeze === true;
 
       // clone the object to avoid mutating the original
       const header = { ...column, level, colspan: 1, rowspan: 1 };
+
+      // ✅ Set the final freeze state on the header object
+      header.freeze = currentlyFrozen;
+
       headerRows[level].push(header);
 
       if (column.children && column.children.length > 0) {
         header.colspan = 0;
         column.children.forEach((child) => {
-          traverse(child, level + 1);
+          // ✅ Pass the new 'currentlyFrozen' state down to children
+          traverse(child, level + 1, currentlyFrozen);
           const childHeader = headerRows[level + 1].find(
             (h) => h.key === child.key
           );
           header.colspan += childHeader ? childHeader.colspan : 1;
         });
       } else {
-        leafColumns.push(header); // store with level as well
+        // ✅ This leafColumn now has the correct propagated 'freeze' status
+        leafColumns.push(header);
       }
     }
 
@@ -417,34 +466,174 @@ export class Renderer {
     });
   }
 
-  _applyStickyHeaders(table) {
+  /**
+   * Applies sticky positioning for headers (top) and frozen columns (left).
+   * This function calculates and applies 'top' offsets for header rows and
+   * 'left' offsets for frozen columns by accumulating column widths
+   * from the <colgroup>.
+   *
+   * @param {HTMLTableElement} table - The table element.
+   * @param {Object} config - The grid configuration object.
+   * @param {Array<Object>} leafColumns - The flat array of leaf column definitions.
+   * @param {Array<Array<Object>>} headerRows - The nested array of header data objects.
+   * @private
+   */
+  _applyStickyStyles(table, config, leafColumns, headerRows) {
     if (!table) return;
+
     const thead = table.querySelector("thead");
-    if (!thead) return;
+    const tbody = table.querySelector("tbody");
+    if (!thead || !tbody) return;
 
-    // Wait a tick to ensure layout is settled
+    const hasActionColumn = !!config.actionColumn;
+    const isActionColumnFrozen = hasActionColumn && config.actionColumn.freeze === true;
+    const hasFrozenLeafCols = leafColumns.some(c => c.freeze === true);
+
+    // === 1. APPLY STICKY HEADERS (Top) ===
+    if (config.thStyle?.position === "sticky") {
+      requestAnimationFrame(() => {
+        const rows = Array.from(thead.rows);
+        const rowHeights = rows.map((row) => row.offsetHeight);
+
+        rows.forEach((row, rowIndex) => {
+          const topOffset = rowHeights
+            .slice(0, rowIndex) // sum of heights of all rows above
+            .reduce((a, b) => a + b, 0);
+
+          Array.from(row.cells).forEach((th) => {
+            th.style.position = "sticky";
+            th.style.top = `${topOffset}px`;
+            // ✅ Base z-index for scrolling headers is 90
+            th.style.zIndex = 90 + rowIndex;
+
+            const bg = getComputedStyle(th).backgroundColor;
+            if (!bg || bg === "rgba(0, 0, 0, 0)" || bg === "transparent") {
+              th.style.background = "#f5f5f5"; // Default sticky header bg
+            }
+          });
+        });
+      });
+    }
+
+    // === 2. APPLY FROZEN COLUMNS (Left) ===
+    if (!isActionColumnFrozen && !hasFrozenLeafCols) {
+      return; // No frozen columns, nothing to do.
+    }
+
     requestAnimationFrame(() => {
-      const rows = Array.from(thead.rows);
-      const rowHeights = rows.map((row) => row.offsetHeight);
+      // ✅ FIX: Get widths from the <colgroup>, not the <thead>
+      const colgroup = table.querySelector("colgroup");
+      if (!colgroup) {
+        console.error("Grid: Missing <colgroup> element, cannot apply frozen columns.");
+        return;
+      }
+      // ✅ Get all <col> elements, which are the source of truth for width
+      const cols = Array.from(colgroup.children);
 
-      rows.forEach((row, rowIndex) => {
-        const topOffset = rowHeights
-          .slice(0, rowIndex) // sum of heights of all rows above
-          .reduce((a, b) => a + b, 0);
+      const columnLeftOffsets = {};
+      let accumulatedLeftOffset = 0; // "sum of width till the last before current one"
+      let domCellIndex = 0; // This will now track the <col> index
 
-        Array.from(row.cells).forEach((th) => {
-          th.style.position = "sticky";
-          th.style.top = `${topOffset}px`;
-          th.style.zIndex = 100 + rowIndex;
+      // --- Measure Action Column ---
+      if (hasActionColumn) {
+        if (isActionColumnFrozen) {
+          const col = cols[domCellIndex]; // Get the <col> element
+          if (col) {
+            // ✅ Set left for current column
+            columnLeftOffsets[domCellIndex] = accumulatedLeftOffset; 
+            // ✅ Add current col's width for the *next* column's calculation
+            accumulatedLeftOffset += col.offsetWidth; 
+          }
+        }
+        domCellIndex++; // Increment index for action column
+      }
 
-          // Set background to ensure sticky layer isn't transparent
-          const bg = getComputedStyle(th).backgroundColor;
-          if (!bg || bg === "rgba(0, 0, 0, 0)" || bg === "transparent") {
-            th.style.background = "#f5f5f5";
+      // --- Measure Data Columns ---
+      leafColumns.forEach((column) => {
+        // We only care about leaf columns that are frozen
+        if (column.freeze === true) {
+          const col = cols[domCellIndex]; // Get the <col> element
+          if (col) {
+            // ✅ Set left for current column
+            columnLeftOffsets[domCellIndex] = accumulatedLeftOffset;
+            // ✅ Add current col's width for the *next* column's calculation
+            accumulatedLeftOffset += col.offsetWidth;
+          }
+        }
+        // Increment domCellIndex for *every* leaf column to stay in sync
+        domCellIndex++;
+      });
+      
+      // --- Apply styles to THEAD (handling nested headers) ---
+      // (This logic remains the same, as it just applies the calculated offsets)
+      Array.from(thead.rows).forEach((row, rowIndex) => {
+        const headerDataRow = headerRows[rowIndex]; 
+        let currentDomCellIndex = 0;
+
+        if (hasActionColumn) {
+          if (isActionColumnFrozen) {
+            const cell = row.cells[currentDomCellIndex];
+            const left = columnLeftOffsets[currentDomCellIndex];
+            if (cell && left !== undefined) {
+              this._applyFreezeStyle(cell, left, true);
+            }
+          }
+          currentDomCellIndex++;
+        }
+
+        if (headerDataRow) {
+            headerDataRow.forEach((header) => {
+              if (header.freeze === true) {
+                const cell = row.cells[currentDomCellIndex];
+                const left = columnLeftOffsets[currentDomCellIndex]; 
+                if (cell && left !== undefined) {
+                  this._applyFreezeStyle(cell, left, true);
+                }
+              }
+              currentDomCellIndex++;
+            });
+        }
+      });
+
+      // --- Apply styles to TBODY (simpler, 1-to-1 mapping) ---
+      // (This logic also remains the same)
+      Array.from(tbody.rows).forEach((row) => {
+        Object.keys(columnLeftOffsets).forEach((cellIndex) => {
+          const cell = row.cells[cellIndex];
+          const left = columnLeftOffsets[cellIndex];
+          if (cell && left !== undefined) {
+            this._applyFreezeStyle(cell, left, false);
           }
         });
       });
     });
+  }
+
+  /**
+   * Helper function to apply sticky/freeze styles to a cell.
+   * @param {HTMLElement} cell - The TH or TD cell.
+   * @param {number} left - The calculated left offset.
+   * @param {boolean} isHeader - If true, applies header-level z-index.
+   * @private
+   */
+  _applyFreezeStyle(cell, left, isHeader) {
+    cell.style.position = "sticky";
+    cell.style.left = `${left}px`;
+
+    if (isHeader) {
+      // ✅ Base z-index is 90+. Make frozen headers 20 higher.
+      const baseZ = parseInt(cell.style.zIndex) || 90;
+      cell.style.zIndex = baseZ + 20; // e.g., 110, 111
+    } else {
+      // ✅ Make frozen body cells 100 (higher than 90s, lower than 110s)
+      cell.style.zIndex = 100;
+    }
+
+    // Ensure background is set
+    const bg = getComputedStyle(cell).backgroundColor;
+    if (!bg || bg === "rgba(0, 0, 0, 0)" || bg === "transparent") {
+      cell.style.background = isHeader ? "#f5f5f5" : "#ffffff";
+    }
   }
 
   _setupColumnResizing(th, config) {
@@ -553,6 +742,11 @@ export class Renderer {
         /* Hover state */
         th .fa-filter:hover:before {
             color: #aaa !important;
+        }
+        
+        /* Filter icon margin adjustment */
+        .fa-filter {
+            margin: 1px 5px 0px 10px;
         }
   `);
     document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
