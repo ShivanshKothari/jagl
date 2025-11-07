@@ -90,11 +90,14 @@ export class Grid {
                 maxWidth: config.resizableColumns?.maxWidth || 500
             },
             nullPlaceholder: '-',
+            styleRules: {"td": {
+                textAlign: 'center'
+            }, ...config.styleRules},
             ...config // User config override defaults
         };
 
-        // For sticky headers
-        this.config.thStyle = {...this.config.thStyle, ...{ position: 'sticky', top: '0', zIndex: 2, cursor: 'pointer' } };
+        // For sticky headers and inline styles
+        this.config.thStyle = { position: 'sticky', top: '0', zIndex: 2, cursor: 'pointer', ...this.config.thStyle };
         //this.config.customCSS = [...this.config.customCSS, ...['https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css']]; 
 
         if (!this.config.keyField) {

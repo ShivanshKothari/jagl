@@ -1,3 +1,4 @@
+import { CssLogics } from "./utils/CssLogics.js";
 import { formatDate } from "./utils/DateFunctions.js";
 
 /**
@@ -17,6 +18,11 @@ export class Renderer {
       throw new Error("Renderer requires a container element.");
     }
     this.container = containerElement; // This can be a ShadowRoot
+
+    // ✅ Only run once per instance
+    this._ensureFaFilterStyle();
+    this._ensureResizerStyle();
+
     this.table = null;
     this.tbody = null;
   }
@@ -34,10 +40,8 @@ export class Renderer {
 
     // Inject custom CSS links before rendering content
     this._injectCustomStyles(config.customCSS);
-    // Ensure filter icon styles are applied
-    this._ensureFaFilterStyle();
-    // Ensure resizer styles are applied
-    this._ensureResizerStyle();
+    // Inject style rules
+    this._injectStyleRules(config.styleRules);
 
     const { headerRows, leafColumns } = this._calculateHeaderStructure(
       config.columns
@@ -156,12 +160,43 @@ export class Renderer {
         }
         // --- END FINAL, ROBUST DATE FORMATTING LOGIC ---
 
-        const cellHTML = column.render
-          ? column.render(cellValue, rowData)
-          : `<td>${
-              this.escapeHTML(cellValue)
-            }</td>`;
-        trInnerHTML += cellHTML;
+        if (
+          column.datatype &&
+          column.datatype.toLowerCase() === "date" &&
+          config.dateFormat
+        ) {
+          const template = document.createElement("template");
+
+          // Render or fallback to plain <td>
+          const cellHTML = column.render
+            ? column.render(cellValue, rowData)
+            : `<td>${this.escapeHTML(cellValue)}</td>`;
+
+          template.innerHTML = cellHTML.trim();
+
+          const td = template.content.firstElementChild;
+
+          if (td) {
+            // Safely append Excel date formatting
+            const existingStyle = td.getAttribute("style") || "";
+            td.setAttribute(
+              "style",
+              `${existingStyle}; mso-number-format:'${config.dateFormat}';`
+            );
+            trInnerHTML += td.outerHTML;
+          } else {
+            // Fallback if render returned something invalid
+            trInnerHTML += `<td style="mso-number-format:'${
+              config.dateFormat
+            }';">${this.escapeHTML(cellValue)}</td>`;
+          }
+        } else {
+          // Non-date columns
+          const cellHTML = column.render
+            ? column.render(cellValue, rowData)
+            : `<td>${this.escapeHTML(cellValue)}</td>`;
+          trInnerHTML += cellHTML;
+        }
       });
 
       trInnerHTML += `</tr>`;
@@ -349,6 +384,9 @@ export class Renderer {
    * @private
    */
   _injectCustomStyles(cssHrefs) {
+    if (Renderer._customStylesInjected) return; // prevent multiple adds
+    Renderer._customStylesInjected = true;
+
     if (!Array.isArray(cssHrefs) || cssHrefs.length === 0) {
       cssHrefs = [];
     }
@@ -476,6 +514,9 @@ export class Renderer {
   }
 
   _ensureResizerStyle() {
+    if (Renderer._resizerStyleApplied) return; // prevent multiple adds
+    Renderer._resizerStyleApplied = true;
+
     const style = document.createElement("style");
     style.textContent = `
         .column-resizer:hover {
@@ -489,32 +530,11 @@ export class Renderer {
   }
 
   _ensureFaFilterStyle() {
-    // Check if our sheet is already attached
-    const already_attached = document.adoptedStyleSheets.some((sheet) => {
-      try {
-        return (
-          sheet.cssRules.length &&
-          [...sheet.cssRules].some(
-            (rule) => rule.selectorText === ".fa-filter:before"
-          )
-        );
-      } catch {
-        return false;
-      }
-    });
-    if (already_attached) return;
+    if (Renderer._faFilterStyleApplied) return; // prevent multiple adds
+    Renderer._faFilterStyleApplied = true;
 
-    // --- Detect base header background ---
-    const th = document.querySelector("th");
-    const bg = th ? getComputedStyle(th).backgroundColor : "#f5f5f5";
-
-    // --- Convert RGB(A) to luminance ---
-    const luminance = this._calculateLuminance(bg);
-    const default_color = luminance < 0.5 ? "white" : "#444"; // auto contrast
-
-    const style_sheet = new CSSStyleSheet();
-
-    style_sheet.replaceSync(`
+    const sheet = new CSSStyleSheet();
+    sheet.replaceSync(`
         /* Default filter icon (auto contrast) */
         .fa-filter:before {
             opacity: 1 !important;
@@ -534,10 +554,19 @@ export class Renderer {
         th .fa-filter:hover:before {
             color: #aaa !important;
         }
-    `);
+  `);
+    document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
+  }
 
-    // Attach globally
-    document.adoptedStyleSheets = [...document.adoptedStyleSheets, style_sheet];
+  _injectStyleRules(styleRules) {
+    if (Renderer._styleRulesInjected) return; // prevent multiple adds
+    Renderer._styleRulesInjected = true;
+
+    const cssText = CssLogics.objectToCSS(styleRules);
+
+    const styleTag = document.createElement("style");
+    styleTag.textContent = cssText;
+    document.head.appendChild(styleTag);
   }
 
   /**
