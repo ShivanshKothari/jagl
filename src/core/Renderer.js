@@ -13,7 +13,7 @@ export class Renderer {
    * @param {HTMLElement|ShadowRoot} containerElement - The DOM element or ShadowRoot where the table will be rendered.
    * @throws {Error} If no container element is provided.
    */
-  constructor(containerElement) {
+  constructor(containerElement, config) {
     if (!containerElement) {
       throw new Error("Renderer requires a container element.");
     }
@@ -25,6 +25,7 @@ export class Renderer {
 
     this.table = null;
     this.tbody = null;
+    this.config = config;
   }
 
   /**
@@ -34,17 +35,17 @@ export class Renderer {
    * @param {Object} config - The configuration object for the table (columns, style, actionColumn, customCSS, etc).
    * @param {Object} pagingState - The current paging state (currentPage, totalPages, etc).
    */
-  render(data, config, pagingState) {
+  render(data, pagingState) {
     // Clear the container (ShadowRoot or HTMLElement)
     this.container.innerHTML = "";
 
     // Inject custom CSS links before rendering content
-    this._injectCustomStyles(config.customCSS);
+    this._injectCustomStyles(this.config.customCSS);
     // Inject style rules
-    this._injectStyleRules(config.styleRules);
+    this._injectStyleRules(this.config.styleRules);
 
     const { headerRows, leafColumns } = this._calculateHeaderStructure(
-      config.columns
+      this.config.columns
     );
 
     // ...
@@ -60,18 +61,18 @@ export class Renderer {
     this.table.style.tableLayout = "fixed";
     this.table.style.boxSizing = "border-box";
 
-    if (config.style) {
-      Object.assign(this.table.style, config.style);
+    if (this.config.style) {
+      Object.assign(this.table.style, this.config.style);
     }
 
     // ✅ ADD <colgroup> TO MANAGE FIXED WIDTHS
     const colgroup = document.createElement("colgroup");
 
     // Add Action Column <col>
-    if (config.actionColumn) {
+    if (this.config.actionColumn) {
       const col = document.createElement("col");
-      if (config.actionColumn.width) {
-        col.style.width = config.actionColumn.width;
+      if (this.config.actionColumn.width) {
+        col.style.width = this.config.actionColumn.width;
       }
       colgroup.appendChild(col);
     }
@@ -100,7 +101,7 @@ export class Renderer {
       const tr = document.createElement("tr");
       row.forEach((header) => {
         const th = document.createElement("th");
-        Object.assign(th.style, config.thStyle);
+        Object.assign(th.style, this.config.thStyle);
         th.style.boxSizing = "border-box";
 
         th.textContent = header.title;
@@ -108,7 +109,7 @@ export class Renderer {
         if (header.colspan > 1) th.colSpan = header.colspan;
         if (header.rowspan > 1) th.rowSpan = header.rowspan;
 
-        if (config.filterData && header.colspan === 1) {
+        if (this.config.filterData && header.colspan === 1) {
           th.innerHTML += `&nbsp;&nbsp;<i class="fa fa-filter filter-icon ${
             header.hasFilter ? " has-filter " : ""
           }" style="opacity:1 !important; visibility:visible !important; ${
@@ -117,8 +118,8 @@ export class Renderer {
         }
 
         // ✅ FIX: Only add resizer to leaf columns (which have colspan = 1)
-        if (config.resizableColumns?.enabled && header.colspan === 1) {
-          this._setupColumnResizing(th, config);
+        if (this.config.resizableColumns?.enabled && header.colspan === 1) {
+          this._setupColumnResizing(th);
         }
 
         tr.appendChild(th);
@@ -128,9 +129,9 @@ export class Renderer {
     });
 
     // ✅ NEW: Now that the header rows are built, add the Action column header
-    if (config.actionColumn) {
+    if (this.config.actionColumn) {
       const actionTh = document.createElement("th");
-      actionTh.textContent = config.actionColumn.title || "Actions";
+      actionTh.textContent = this.config.actionColumn.title || "Actions";
       // Make it span all header rows
       actionTh.rowSpan = headerRows.length;
 
@@ -145,22 +146,22 @@ export class Renderer {
     let tbodyInnerHTML = "";
     data.forEach((rowData) => {
       let keyField = "";
-      config.keyField.split(",").forEach((key) => (keyField += rowData[key]));
+      this.config.keyField.split(",").forEach((key) => (keyField += rowData[key]));
 
       let trInnerHTML = `<tr key="${keyField}">`; // Add key to the row
 
-      if (config.actionColumn) {
+      if (this.config.actionColumn) {
         // Action menu button
         trInnerHTML += `<td><button type="button" class="action-trigger" style="background-color:none; border: none"><i class="fa fa-bars"></i></button></td>`;
       }
 
       // Use the flat list of leafColumns to ensure correct order and cell count
       leafColumns.forEach((column) => {
-        let cellValue = rowData[column.key] ?? config.nullPlaceholder;
+        let cellValue = rowData[column.key] ?? this.config.nullPlaceholder;
 
         // --- FINAL, ROBUST DATE FORMATTING LOGIC ---
         if (
-          config.dateFormat &&
+          this.config.dateFormat &&
           column.datatype &&
           column.datatype.toLowerCase() === "date" &&
           cellValue
@@ -192,14 +193,14 @@ export class Renderer {
             }
           }
           // console.log('Formatting date for column:', column.key, column, 'with value:', cellValue);
-          cellValue = formatDate(dateCandidate, config.dateFormat);
+          cellValue = formatDate(dateCandidate, this.config.dateFormat);
         }
         // --- END FINAL, ROBUST DATE FORMATTING LOGIC ---
 
         if (
           column.datatype &&
           column.datatype.toLowerCase() === "date" &&
-          config.dateFormat
+          this.config.dateFormat
         ) {
           const template = document.createElement("template");
 
@@ -217,13 +218,13 @@ export class Renderer {
             const existingStyle = td.getAttribute("style") || "";
             td.setAttribute(
               "style",
-              `${existingStyle}; mso-number-format:'${config.dateFormat}';`
+              `${existingStyle}; mso-number-format:'${this.config.dateFormat}';`
             );
             trInnerHTML += td.outerHTML;
           } else {
             // Fallback if render returned something invalid
             trInnerHTML += `<td style="mso-number-format:'${
-              config.dateFormat
+              this.config.dateFormat
             }';">${this.escapeHTML(cellValue)}</td>`;
           }
         } else {
@@ -249,28 +250,28 @@ export class Renderer {
     this.container.appendChild(this.table);
 
     // After rendering the table, render the pager UI
-    if (config.paging && config.paging.enabled) {
+    if (this.config.paging && this.config.paging.enabled) {
       this.renderPager(pagingState);
     }
 
     // Apply sticky headers and frozen columns after full layout render
-    const hasStickyHeaders = config.thStyle?.position === "sticky";
+    const hasStickyHeaders = this.config.thStyle?.position === "sticky";
     // Check if any leaf column or the action column is set to freeze
     const hasFrozenColumns =
-      config.actionColumn?.freeze === true ||
+      this.config.actionColumn?.freeze === true ||
       (leafColumns && leafColumns.some((c) => c.freeze === true));
 
     if (hasStickyHeaders || hasFrozenColumns) {
       window.requestAnimationFrame(() => {
         // ✅ Pass headerRows and leafColumns
-        this._applyStickyStyles(this.table, config, leafColumns, headerRows);
+        this._applyStickyStyles(this.table, leafColumns, headerRows);
       });
 
       // 👇 Recalculate stickies when table resizes
       if (!this._resizeObserver) {
         this._resizeObserver = new ResizeObserver(() => {
           // ✅ Pass headerRows and leafColumns
-          this._applyStickyStyles(this.table, config, leafColumns, headerRows);
+          this._applyStickyStyles(this.table, leafColumns, headerRows);
         });
 
         const thead = this.table.querySelector("thead");
@@ -327,6 +328,147 @@ export class Renderer {
     pagerContainer.appendChild(nextButton);
 
     this.container.appendChild(pagerContainer);
+  }
+
+  /**
+   * Performs a "Virtual DOM" style update.
+   * It aligns new data with existing DOM rows using the keyField.
+   * * @param {Array<Object>} newData - The full array of new data to display.
+   * @param {Object} config - Grid configuration.
+   */
+  reconcile(newData) {
+    if (!this.tbody) return; // Guard if render() hasn't been called yet
+
+    const keyField = this.config.keyField;
+    const leafColumns = this.currentLeafColumns || this._calculateHeaderStructure(this.config.columns).leafColumns;
+
+    // 1. Map existing DOM rows by their Key for quick lookup
+    const existingRows = new Map();
+    Array.from(this.tbody.children).forEach(tr => {
+      const key = tr.getAttribute('key');
+      if (key) existingRows.set(key, tr);
+    });
+
+    // 2. Create a document fragment for any brand new rows (optimization)
+    const fragment = document.createDocumentFragment();
+    
+    // Track keys we've processed to know what to delete later
+    const processedKeys = new Set();
+
+    newData.forEach((rowData, index) => {
+        // Generate the unique key for this row data
+        let rowKey = "";
+        keyField.split(",").forEach((k) => (rowKey += rowData[k]));
+        
+        processedKeys.add(rowKey);
+
+        // Generate the HTML for this row (New Content)
+        const newHtmlContent = this._generateRowInnerHtml(rowData, leafColumns);
+
+        if (existingRows.has(rowKey)) {
+            // --- UPDATE EXISTING ---
+            const tr = existingRows.get(rowKey);
+            
+            // Simple Diff: Only update DOM if the HTML string doesn't match.
+            // This prevents losing input focus or selection if data hasn't effectively changed.
+            if (tr.innerHTML !== newHtmlContent) {
+                tr.innerHTML = newHtmlContent;
+            }
+
+            // Re-order handling: Ensure the row is at the correct physical index
+            const currentRowAtIndex = this.tbody.children[index];
+            if (currentRowAtIndex !== tr) {
+                // If the row is not where it should be, move it.
+                // insertBefore moves the element if it's already in the DOM.
+                this.tbody.insertBefore(tr, currentRowAtIndex);
+            }
+
+        } else {
+            // --- CREATE NEW ---
+            const tr = document.createElement('tr');
+            tr.setAttribute('key', rowKey);
+            tr.innerHTML = newHtmlContent;
+            
+            // Insert at the specific index to maintain order
+            if (index < this.tbody.children.length) {
+                this.tbody.insertBefore(tr, this.tbody.children[index]);
+            } else {
+                this.tbody.appendChild(tr);
+            }
+        }
+    });
+
+    // 3. Cleanup: Remove rows that are no longer in the data
+    existingRows.forEach((tr, key) => {
+        if (!processedKeys.has(key)) {
+            tr.remove();
+        }
+    });
+  }
+
+  /**
+   * Helper: Generates just the inner HTML (tds) for a row.
+   * Does NOT generate the <tr> tag itself, allowing us to reuse the existing TR.
+   */
+  _generateRowInnerHtml(rowData, leafColumns) {
+    let html = "";
+    
+    if (this.config.actionColumn) {
+        html += `<td><button type="button" class="action-trigger" style="background-color:none; border: none"><i class="fa fa-bars"></i></button></td>`;
+    }
+
+    leafColumns.forEach(column => {
+        let cellValue = rowData[column.key] ?? this.config.nullPlaceholder;
+
+        // --- FINAL, ROBUST DATE FORMATTING LOGIC ---
+        if (
+          this.config.dateFormat &&
+          column.datatype &&
+          column.datatype.toLowerCase() === "date" &&
+          cellValue
+        ) {
+          let dateCandidate = null;
+
+          if (cellValue instanceof Date) {
+            // Case 1: Value is already a Date object (most reliable)
+            dateCandidate = cellValue;
+          } else if (typeof cellValue === "string") {
+            const valueString = cellValue.trim();
+
+            // Case 2: Handle common JSON date format like "/Date(1234567890000)/"
+            const match = valueString.match(/\/Date\((\d+)\)\//);
+
+            if (match) {
+              // Extract timestamp and create date
+              dateCandidate = new Date(parseInt(match[1], 10));
+            } else if (valueString !== "") {
+              // Case 3: Standard string parsing (ISO, RFC, etc.)
+              dateCandidate = new Date(valueString);
+            }
+          } else if (typeof cellValue === "number" && cellValue !== 0) {
+            // Case 4: Handle numeric timestamps. Skip small numbers (like IDs)
+            // by requiring a value greater than a small timestamp (e.g., 100 seconds after epoch)
+            // If it is a timestamp, it will be a very large number.
+            if (cellValue > 100000) {
+              dateCandidate = new Date(cellValue);
+            }
+          }
+          // console.log('Formatting date for column:', column.key, column, 'with value:', cellValue);
+          cellValue = formatDate(dateCandidate, this.config.dateFormat);
+        }
+        // --- END FINAL, ROBUST DATE FORMATTING LOGIC ---
+        if (this.config.dateFormat && column.datatype?.toLowerCase() === 'date' && cellValue) {
+             cellValue = formatDate(cellValue, this.config.dateFormat); // Assumed global or imported
+        }
+
+        const cellContent = column.render
+            ? column.render(cellValue, rowData)
+            : `<td>${this.escapeHTML(cellValue)}</td>`;
+            
+        html += cellContent;
+    });
+
+    return html;
   }
 
   showEditForm(rowData, editFormConfig) {
@@ -478,19 +620,19 @@ export class Renderer {
    * @param {Array<Array<Object>>} headerRows - The nested array of header data objects.
    * @private
    */
-  _applyStickyStyles(table, config, leafColumns, headerRows) {
+  _applyStickyStyles(table, leafColumns, headerRows) {
     if (!table) return;
 
     const thead = table.querySelector("thead");
     const tbody = table.querySelector("tbody");
     if (!thead || !tbody) return;
 
-    const hasActionColumn = !!config.actionColumn;
-    const isActionColumnFrozen = hasActionColumn && config.actionColumn.freeze === true;
+    const hasActionColumn = !!this.config.actionColumn;
+    const isActionColumnFrozen = hasActionColumn && this.config.actionColumn.freeze === true;
     const hasFrozenLeafCols = leafColumns.some(c => c.freeze === true);
 
     // === 1. APPLY STICKY HEADERS (Top) ===
-    if (config.thStyle?.position === "sticky") {
+    if (this.config.thStyle?.position === "sticky") {
       requestAnimationFrame(() => {
         const rows = Array.from(thead.rows);
         const rowHeights = rows.map((row) => row.offsetHeight);
@@ -636,7 +778,7 @@ export class Renderer {
     }
   }
 
-  _setupColumnResizing(th, config) {
+  _setupColumnResizing(th) {
     const resizer = document.createElement("div");
     resizer.className = "column-resizer";
     resizer.style.cssText = `
@@ -682,8 +824,8 @@ export class Renderer {
       const newWidth = startWidth + delta;
 
       if (
-        newWidth >= config.resizableColumns.minWidth &&
-        newWidth <= config.resizableColumns.maxWidth
+        newWidth >= this.config.resizableColumns.minWidth &&
+        newWidth <= this.config.resizableColumns.maxWidth
       ) {
         scheduleResize(newWidth);
       }
