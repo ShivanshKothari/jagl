@@ -137,7 +137,7 @@ export class Grid {
         renderRoot = containerElement.shadowRoot;
       } else {
         // Attach a shadow root (mode 'open' allows JS access from outside)
-        renderRoot = containerElement.attachShadow({ mode: "open" });
+        renderRoot = containerElement.attachShadow({ mode: "closed" });
       }
     }
     // Pass the chosen root element (either original container or shadowRoot) to the Renderer
