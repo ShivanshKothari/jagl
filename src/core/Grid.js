@@ -141,7 +141,7 @@ export class Grid {
       }
     }
     // Pass the chosen root element (either original container or shadowRoot) to the Renderer
-    this.renderer = new Renderer(renderRoot, this.config);
+    this.renderer = new Renderer(renderRoot);
     // --- END Shadow DOM/Renderer Setup ---
 
     this.eventManager = new EventManager(this);
@@ -254,30 +254,7 @@ export class Grid {
     }
 
     // Pass the configured columns to the renderer
-    this.renderer.render(dataToRender, this.pagingState);
-  }
-
-  /**
-   * Smart Render: Updates the grid with new data using a VDOM-like diff strategy.
-   * Useful when you have a full new dataset but want to preserve DOM state (focus/scroll).
-   * @param {Array<Object>} newData - The complete new dataset.
-   */
-  renderDiff(newData) {
-      // 1. Update the store's data so sorting/filtering logic stays valid
-      // (If you want to replace the WHOLE dataset)
-      this.store.setData(newData); 
-      
-      // 2. Get the data ready for display (respecting current pagination/filter?)
-      // Usually renderDiff is used for real-time updates where pagination might be tricky.
-      // Assuming we are updating the CURRENT page's view:
-      
-      const dataToRender = this.store.getData().slice(
-          (this.pagingState.currentPage - 1) * this.pagingState.pageSize,
-          this.pagingState.currentPage * this.pagingState.pageSize
-      );
-
-      // 3. Reconcile
-      this.renderer.reconcile(dataToRender);
+    this.renderer.render(dataToRender, { ...this.config }, this.pagingState);
   }
 
   /**
