@@ -1,0 +1,83 @@
+{
+  "version": "1.0",
+  "metadata": {
+    "title": "Employee Management Grid",
+    "description": "Demo grid showing employee data with custom status rendering",
+    "created": "2024-01-01",
+    "author": "JAGL Demo"
+  },
+  "dataSource": {
+    "mode": "url",
+    "source": "./data.json"
+  },
+  "keyField": "id",
+  "columns": [
+    {
+      "key": "sno",
+      "title": "S.No",
+      "index": 0,
+      "renderer": "default"
+    },
+    {
+      "key": "employeenamestatus",
+      "title": "Employee Name & Status",
+      "index": 1,
+      "children": [
+        {
+          "key": "name",
+          "title": "Employee Name",
+          "index": 1,
+          "renderer": "default"
+        },
+        {
+          "key": "status",
+          "title": "Status",
+          "index": 2,
+          "renderer": "statusBadge",
+          "rendererOptions": {
+            "activeColor": "green",
+            "inactiveColor": "red",
+            "fontWeight": "bold"
+          }
+        }
+      ]
+    },
+    {
+      "key": "email",
+      "title": "Email",
+      "index": 3,
+      "renderer": "email"
+    }
+  ],
+  "actionColumn": {
+    "title": "Action",
+    "keyField": "id",
+    "actions": [
+      {
+        "label": "Edit",
+        "className": "btn-edit",
+        "handler": "editEmployee",
+        "icon": "fa-edit"
+      },
+      {
+        "label": "Delete",
+        "className": "btn-delete",
+        "handler": "deleteEmployee",
+        "icon": "fa-trash"
+      }
+    ]
+  },
+  "sorting": {
+    "key": "sno",
+    "order": "asc"
+  },
+  "paging": {
+    "enabled": true,
+    "pageSize": 10
+  },
+  "style": {
+    "overflow": "scroll",
+    "margin": 0
+  },
+  "addSerialColumn": true
+}
